@@ -1,19 +1,22 @@
 import requests
 from bs4 import BeautifulSoup
-import time
 from tqdm import tqdm
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import pandas as pd
-import random
-import sys
-
-import aiohttp
-import asyncio
-from aiohttp import ClientSession
 
 
 
+# ========================================================
+#                 FIRST PART: COLLECTING THE LINKS
+# - This section handles scraping restaurant links 
+#   from the Michelin Guide website.
+# - It gets the total number of pages from the 
+#   starting page, then iterates over all the pages
+#   collectin restaurant links
+# ========================================================
+
+
+# Function to get the restaurant links from all the pages
 def save_links(start_url, data_folder = 'DATA', file_name = 'restaurant_links.txt'): 
 
     # Skip the link collection if the file already exists
@@ -77,10 +80,18 @@ def save_links(start_url, data_folder = 'DATA', file_name = 'restaurant_links.tx
 
 
 
+# ========================================================
+#                 SECOND PART: DOWNLOADING THE PAGES
+# - This section downloads the restaurant pages using 
+#   ThreadPoolExecutor to make it faster
+# ========================================================
+
+
 # Function to read restaurant links from a file
 def read_links_from_file(file_path):
     with open(file_path, "r") as f:
         return [line.strip() for line in f.readlines()]
+
 
 # Function to download and save the HTML of a single restaurant
 def download_html(link, page_folder):
@@ -99,6 +110,7 @@ def download_html(link, page_folder):
     with open(file_path, "w", encoding="utf-8") as f:
         f.write(response.text)
     return None
+
 
 # Function to download and save the HTMLs of each restaurant in parallel
 def download_html_parallel(restaurant_links, data_folder):
@@ -141,6 +153,12 @@ def download_html_from_link_file(file_name = 'restaurant_links.txt', data_folder
 
 
 
+# ========================================================
+#                 THIRD PART: EXTRACTING DATAS INTO TSVs
+# - This section gets the relevant datas from the downloaded htmls
+#   and store them in tsv files
+# ========================================================
+
 
 # Function to extract data from an HTML
 def extract_info_from_html(html):
@@ -162,13 +180,13 @@ def extract_info_from_html(html):
     # Split the components
     components = address_text.split(", ")
     length = len(components)
-    address = ', '.join([comp.strip() for comp in components[0:length-3]])      # address
-    city = components[-3].strip()                                               # city
-    postal_code = components[-2].strip()                                        # postal code
-    country = components[-1].strip()                                            # country
+    address = ', '.join([comp.strip() for comp in components[0:length-3]])   
+    city = components[-3].strip()                                               
+    postal_code = components[-2].strip()                                       
+    country = components[-1].strip()                                           
 
     # Handle the second block to extract price range and cuisine type
-    price_range = cuisine_type = ""
+    price_range = cuisine_type = None
 
     price_cuisine_text = blocks[1].text.strip()
 
@@ -228,26 +246,19 @@ def extract_info_from_html(html):
         'website': website
     }
 
-# # Function to process a single file
-# def process_file(file_path, restaurant_index, tsv_folder):
-#     with open(file_path, "r", encoding="utf-8") as f:
-#         html = f.read()
-#         data = extract_info_from_html(html)
-        
-#     # Create a DataFrame for each restaurant and save it as a TSV file
-#     df = pd.DataFrame([data])
-#     tsv_filename = os.path.join(tsv_folder, f'restaurant_{restaurant_index}.tsv')
-#     df.to_csv(tsv_filename, sep='\t', index=False, header=True)
-
 
 # Function to process a single file
 def process_file(file_path, restaurant_index, tsv_folder):
+    # Define the TSV file path
+    tsv_filename = os.path.join(tsv_folder, f'restaurant_{restaurant_index}.tsv')
+    
+    # Skip processing if the TSV file already exists
+    if os.path.exists(tsv_filename):
+        return
+
     with open(file_path, "r", encoding="utf-8") as f:
         html = f.read()
         data = extract_info_from_html(html)
-
-    # Define the TSV file path
-    tsv_filename = os.path.join(tsv_folder, f'restaurant_{restaurant_index}.tsv')
 
     # Write the data directly to the TSV file
     with open(tsv_filename, "w", encoding="utf-8") as tsv_file:
@@ -271,7 +282,7 @@ def get_html_files_in_directory(directory):
     return page_files
 
 
-
+# Function to iterate over all htmls
 def html_to_tsv(data_folder='DATA'):
     # Check if the folder with the HTML files exists, if not exit
     html_folder = os.path.join(data_folder, 'HTMLs')
