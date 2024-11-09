@@ -149,7 +149,8 @@ def download_html_from_link_file(file_name = 'restaurant_links.txt', data_folder
     file_path = os.path.join(data_folder, file_name)
     restaurant_links = read_links_from_file(file_path)
     # Start the parallel download for all the links
-    download_html_parallel(restaurant_links, data_folder)
+    download_html_parallel(restaurant_links, data_folder)    
+    print("All html files have been saved.")
 
 
 
@@ -281,27 +282,6 @@ def get_html_files_in_directory(directory):
     
     return page_files
 
-
-# # Function to iterate over all htmls
-# def html_to_tsv(data_folder='DATA'):
-#     # Check if the folder with the HTML files exists, if not exit
-#     html_folder = os.path.join(data_folder, 'HTMLs')
-#     if not os.path.exists(html_folder):
-#         print("No 'HTMLs' folder found, unable to process the files.")
-#         return None
-
-#     # Ensure the 'TSV' folder exists
-#     tsv_folder = os.path.join(data_folder, 'TSVs')
-#     os.makedirs(tsv_folder, exist_ok=True)
-
-#     # Get all the HTML files in the 'HTML' folder (including subfolders)
-#     html_files = get_html_files_in_directory(html_folder)
-
-#     # Process each file with a progress bar
-#     for index, file_path in tqdm(enumerate(html_files, start=1), total=len(html_files), desc="Processing HTMLs"):
-#         process_file(file_path, index, tsv_folder)
-
-#     print("All files have been processed and saved.")
 
 # Function to iterate over all htmls
 def html_to_tsv(data_folder='DATA', max_workers=4):
