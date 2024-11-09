@@ -282,8 +282,29 @@ def get_html_files_in_directory(directory):
     return page_files
 
 
+# # Function to iterate over all htmls
+# def html_to_tsv(data_folder='DATA'):
+#     # Check if the folder with the HTML files exists, if not exit
+#     html_folder = os.path.join(data_folder, 'HTMLs')
+#     if not os.path.exists(html_folder):
+#         print("No 'HTMLs' folder found, unable to process the files.")
+#         return None
+
+#     # Ensure the 'TSV' folder exists
+#     tsv_folder = os.path.join(data_folder, 'TSVs')
+#     os.makedirs(tsv_folder, exist_ok=True)
+
+#     # Get all the HTML files in the 'HTML' folder (including subfolders)
+#     html_files = get_html_files_in_directory(html_folder)
+
+#     # Process each file with a progress bar
+#     for index, file_path in tqdm(enumerate(html_files, start=1), total=len(html_files), desc="Processing HTMLs"):
+#         process_file(file_path, index, tsv_folder)
+
+#     print("All files have been processed and saved.")
+
 # Function to iterate over all htmls
-def html_to_tsv(data_folder='DATA'):
+def html_to_tsv(data_folder='DATA', max_workers=4):
     # Check if the folder with the HTML files exists, if not exit
     html_folder = os.path.join(data_folder, 'HTMLs')
     if not os.path.exists(html_folder):
@@ -297,12 +318,20 @@ def html_to_tsv(data_folder='DATA'):
     # Get all the HTML files in the 'HTML' folder (including subfolders)
     html_files = get_html_files_in_directory(html_folder)
 
-    # Process each file with a progress bar
-    for index, file_path in tqdm(enumerate(html_files, start=1), total=len(html_files), desc="Processing HTMLs"):
+    # Define a function to process a single file
+    def process_file_wrapper(file_tuple):
+        file_path, index = file_tuple
         process_file(file_path, index, tsv_folder)
 
-    print("All files have been processed and saved.")
+    # Create a list of tuples containing file paths and their indices
+    file_tuples = [(file_path, index) for index, file_path in enumerate(html_files, start=1)]
 
+    # Use ThreadPoolExecutor to parallelize the processing
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Use tqdm to show the progress bar for the parallelized task
+        list(tqdm(executor.map(process_file_wrapper, file_tuples), total=len(html_files), desc="Processing HTMLs"))
+
+    print("All files have been processed and saved.")
 
 
 
