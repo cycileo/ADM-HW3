@@ -2,6 +2,9 @@
 HTMLs/
 TSVs/
 
+# Ignore the .txt file
+*.txt
+
 # Ignore other common files and folders
 *.log
 *.tmp
