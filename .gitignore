@@ -1,0 +1,11 @@
+# Ignore HTMLs and TSVs folders
+HTMLs/
+TSVs/
+
+# Ignore other common files and folders
+*.log
+*.tmp
+__pycache__/
+*.pyc
+.DS_Store
+*.swp
