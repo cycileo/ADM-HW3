@@ -4,7 +4,7 @@ from tqdm import tqdm
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
-import glob 
+import glob
 
 
 
@@ -337,3 +337,27 @@ def create_combined_dataframe(folder_path, separator):
     combined_df = pd.concat(df_list, ignore_index=True)
 
     return combined_df
+
+
+# ========================================================
+#                 SECOND PART: SEARCH ENGINE
+# ========================================================
+
+
+from nltk.corpus import stopwords
+from nltk.tokenize import wordpunct_tokenize
+from nltk.stem import SnowballStemmer
+import re
+
+def preprocess_text(description):
+    stop_words = set(stopwords.words('english'))
+    word_tokens = wordpunct_tokenize(description)  # Replaced word_tokenize with wordpunct_tokenize
+    
+    # Filtering out stopwords
+    filtered_sentence = [w for w in word_tokens if w.lower() not in stop_words]
+    cleaned_tokens = [re.sub(r'[^\w\s]', '', token) for token in filtered_sentence if re.sub(r'[^\w\s]', '', token)]
+    ss = SnowballStemmer('english')
+    stemmed_sentence = [ss.stem(w) for w in cleaned_tokens]
+    print("Word Tokens:", ' '.join(word_tokens))
+    print("Filtered Sentence:", ' '.join(cleaned_tokens))
+    print("Stemmed Sentence:", ' '.join(stemmed_sentence))
