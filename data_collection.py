@@ -348,6 +348,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import wordpunct_tokenize
 from nltk.stem import SnowballStemmer
 import re
+import json
 
 # Function to preprocess restaurant descriptions by removing stopwords, cleaning punctuation, and applying stemming to improve search efficiency.
 def preprocess_text(descriptions):
@@ -389,7 +390,7 @@ def preprocess_text(descriptions):
     return processed_descriptions
 
 # Function to create 'vocabulary.csv' file
-def create_vocabulary(processed_texts):
+def create_vocabulary(processed_descriptions):
     """
     Creates a vocabulary file in CSV format, mapping each unique word (term) in the processed texts to a unique integer ID.
 
@@ -401,7 +402,7 @@ def create_vocabulary(processed_texts):
     """
     
     # Flatten the list of lists into a single list and convert it to a set to keep only unique words
-    unique_terms = list(set([word for description in processed_texts for word in description]))
+    unique_terms = list(set([word for description in processed_descriptions for word in description]))
     
     # Create a DataFrame with term IDs and terms
     vocabulary_df = pd.DataFrame({
@@ -414,4 +415,100 @@ def create_vocabulary(processed_texts):
     
     return vocabulary_df
 
+# Function to create the inverted index dictionary and save it as 'inverted_index.json'
+def create_inverted_index(processed_descriptions, vocabulary_df, file_path="inverted_index.json"):
+    """
+    Creates or loads an inverted index for a collection of documents (processed descriptions).
+    
+    The inverted index maps term IDs to lists of document indices containing the term. 
+    Document IDs are derived from the row index of the `processed_descriptions` list,
+    meaning the document ID corresponds to the index of the description in the list.
+    
+    Args:
+    processed_descriptions (list of list of str): A list of processed document descriptions, 
+                                                  where each description is a list of terms (strings).
+    vocabulary_df (pandas.DataFrame): A DataFrame containing 'term' and 'term_id' columns. 
+                                      It maps each term to a unique term_id.
+    file_path (str): Path to the file where the inverted index is stored. Default is "inverted_index.json".
+    
+    Returns:
+    dict: An inverted index, where keys are term IDs and values are lists of document indices
+          (rows) that contain each term. Document IDs correspond to the indices of the 
+          descriptions in the `processed_descriptions` list.
+    """
+    
+    # Check if the inverted index file exists
+    if os.path.exists(file_path):
+        # If the file exists, load the inverted index from the file
+        with open(file_path, 'r') as f:
+            print("Loading inverted index from file.")
+            inverted_index = json.load(f)
+    else:
+        # If the file does not exist, create the inverted index
+        print("Creating inverted index...")
+        
+        # Create a mapping of terms to term_ids for fast lookup
+        term_to_id = {term: term_id for term, term_id in zip(vocabulary_df['term'], vocabulary_df['term_id'])}
+        
+        # Initialize an empty dictionary for the inverted index
+        inverted_index = {term_id: [] for term_id in vocabulary_df['term_id']}
+        
+        # Iterate over the documents
+        for doc_idx, description in enumerate(processed_descriptions):
+            # Use a set to avoid duplicate terms in a single document
+            unique_terms = set(description)
+            
+            # For each unique term in the document, add the document index to the inverted index
+            for term in unique_terms:
+                # If the term exists in the vocabulary, add the document index to its term_id's list
+                if term in term_to_id:
+                    inverted_index[term_to_id[term]].append(doc_idx)
+        
+        # Save the inverted index to a JSON file
+        with open(file_path, 'w') as f:
+            json.dump(inverted_index, f, indent=4)  # Save with indentation for readability
+            print(f"Inverted index saved to {file_path}.")
+    
+    return inverted_index
 
+# Function to execute a search query by finding documents that contain all terms in the query.
+def execute_query(query, inverted_index, vocabulary_df):
+    """
+    Executes a search query on an inverted index to find documents that contain all the terms in the query.
+    
+    Parameters:
+    query (str): The search query, typically a string of words.
+    inverted_index (dict): The inverted index where keys are term_ids and values are lists of document indices (IDs).
+    vocabulary_df (pd.DataFrame): A DataFrame that maps terms to their unique term_ids.
+
+    Returns:
+    list: A list of document IDs that contain all the terms in the query.
+    """
+    
+    # Preprocess the query to tokenize and clean the terms
+    # Assumes query is a single string, and preprocesses it to get a list of terms
+    query_list = preprocess_text([query])[0]  # preprocess_text returns a list of lists, we get the first (and only) list
+    
+    # Get the term_ids corresponding to the terms in the query
+    # 'isin' checks if each term in the query is present in the vocabulary DataFrame
+    # 'term_id' is the column in the vocabulary that maps each term to a unique integer ID
+    terms_id = vocabulary_df[vocabulary_df['term'].isin(query_list)]['term_id'].astype(str).tolist()
+    
+    # Initialize a list to store the document sets for each term in the query
+    documents_id = []
+    
+    # For each term_id from the query, retrieve the set of document IDs from the inverted index
+    for term_id in terms_id:
+        # Convert the term_id into a set of document IDs
+        documents_id.append(set(inverted_index[term_id]))
+    
+    # Start with the set of document IDs for the first term
+    intersection_result = documents_id[0]
+    
+    # Perform an intersection between all the document sets
+    # The intersection operator '&=' finds common elements between sets
+    for s in documents_id[1:]:
+        intersection_result &= s  # Keep only the documents that contain all terms in the query
+    
+    # Return the list of document IDs that match all query terms
+    return list(intersection_result)
