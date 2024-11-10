@@ -181,7 +181,7 @@ def extract_info_from_html(html):
     # Split the components
     components = address_text.split(", ")
     length = len(components)
-    address = ', '.join([comp.strip() for comp in components[0:length-3]])   
+    address = ', '.join([comp.strip().replace('\n', ' ') for comp in components[0:length-3]])   
     city = components[-3].strip()                                               
     postal_code = components[-2].strip()                                       
     country = components[-1].strip()                                           
@@ -198,7 +198,7 @@ def extract_info_from_html(html):
 
     # Extract the description
     description_element = soup.find('div', class_='data-sheet__description')
-    description = description_element.text.strip() if description_element else "No description available"
+    description = description_element.text.strip().replace('\n', ' ') if description_element else "No description available"
 
     facilities_services = []
 
