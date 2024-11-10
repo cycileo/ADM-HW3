@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import pandas as pd
+import glob 
 
 
 
@@ -313,8 +315,25 @@ def html_to_tsv(data_folder='DATA', max_workers=4):
 
     print("All files have been processed and saved.")
 
+# Function to create the dataframe for the dataset
+def create_combined_dataframe(folder_path, separator):
+    """
+    Creates a combined DataFrame from all .tsv files in a specified folder.
 
+    Parameters:
+    - folder_path: Path to the folder containing .tsv files.
+    - separator: Delimiter used in the .tsv files (default: ',').
 
+    Returns:
+    - DataFrame containing all combined data.
+    """
+    # Find all .tsv files in the specified folder
+    all_files = glob.glob(os.path.join(folder_path, "*.tsv"))
 
-
+    # Load each .tsv file as a DataFrame and store in a list
+    df_list = [pd.read_csv(file, sep=separator) for file in all_files]
     
+    # Concatenate all DataFrames in the list into a single DataFrame
+    combined_df = pd.concat(df_list, ignore_index=True)
+
+    return combined_df
