@@ -322,7 +322,7 @@ def create_combined_dataframe(folder_path, separator):
 
     Parameters:
     - folder_path: Path to the folder containing .tsv files.
-    - separator: Delimiter used in the .tsv files (default: ',').
+    - separator: Delimiter used in the .tsv files.
 
     Returns:
     - DataFrame containing all combined data.
@@ -340,7 +340,7 @@ def create_combined_dataframe(folder_path, separator):
 
 
 # ========================================================
-#                 SECOND PART: SEARCH ENGINE
+#                 SECOND EXERCISE: SEARCH ENGINE
 # ========================================================
 
 
@@ -349,15 +349,69 @@ from nltk.tokenize import wordpunct_tokenize
 from nltk.stem import SnowballStemmer
 import re
 
-def preprocess_text(description):
-    stop_words = set(stopwords.words('english'))
-    word_tokens = wordpunct_tokenize(description)  # Replaced word_tokenize with wordpunct_tokenize
+# Function to preprocess restaurant descriptions by removing stopwords, cleaning punctuation, and applying stemming to improve search efficiency.
+def preprocess_text(descriptions):
+    """
+    Preprocesses a list of restaurant descriptions by:
+    - Tokenizing each description
+    - Removing stopwords
+    - Cleaning tokens of punctuation
+    - Stemming each word to its root form
     
-    # Filtering out stopwords
-    filtered_sentence = [w for w in word_tokens if w.lower() not in stop_words]
-    cleaned_tokens = [re.sub(r'[^\w\s]', '', token) for token in filtered_sentence if re.sub(r'[^\w\s]', '', token)]
-    ss = SnowballStemmer('english')
-    stemmed_sentence = [ss.stem(w) for w in cleaned_tokens]
-    print("Word Tokens:", ' '.join(word_tokens))
-    print("Filtered Sentence:", ' '.join(cleaned_tokens))
-    print("Stemmed Sentence:", ' '.join(stemmed_sentence))
+    Parameters:
+    descriptions (list of str): List of text descriptions to preprocess
+    
+    Returns:
+    list of list of str: A list where each element is a list of processed tokens for a description
+    """
+    
+    processed_descriptions = []  # Holds the final processed tokens for each description
+    stop_words = set(stopwords.words('english'))  # Load English stopwords set
+    stemmer = SnowballStemmer('english')  # Initialize the Snowball stemmer for English
+
+    # Process each description individually
+    for description in descriptions:
+        # Tokenize the description into words/punctuation using wordpunct_tokenize
+        tokens = wordpunct_tokenize(description)
+        
+        # Remove stopwords and lowercase each word for uniformity
+        tokens_without_stopwords = [word for word in tokens if word.lower() not in stop_words]
+        
+        # Remove punctuation by substituting any non-word characters with an empty string
+        cleaned_tokens = [re.sub(r'[^\w\s]', '', token) for token in tokens_without_stopwords if re.sub(r'[^\w\s]', '', token)]
+        
+        # Stem each word to its root form
+        stemmed_tokens = [stemmer.stem(word) for word in cleaned_tokens]
+        
+        # Append the processed tokens for this description to the list
+        processed_descriptions.append(stemmed_tokens)
+
+    return processed_descriptions
+
+# Function to create 'vocabulary.csv' file
+def create_vocabulary(processed_texts):
+    """
+    Creates a vocabulary file in CSV format, mapping each unique word (term) in the processed texts to a unique integer ID.
+
+    Parameters:
+    processed_texts (list of list of str): A list of lists, where each sublist contains tokenized and processed words from a description.
+
+    Returns:
+    pd.DataFrame: A DataFrame containing the vocabulary, with each word mapped to a unique integer ID.
+    """
+    
+    # Flatten the list of lists into a single list and convert it to a set to keep only unique words
+    unique_terms = list(set([word for description in processed_texts for word in description]))
+    
+    # Create a DataFrame with term IDs and terms
+    vocabulary_df = pd.DataFrame({
+        'term_id': range(len(unique_terms)),  # Assign a unique integer ID to each term
+        'term': unique_terms
+    })
+    
+    # Save the vocabulary DataFrame to a CSV file named 'vocabulary.csv' without including the index
+    vocabulary_df.to_csv('vocabulary.csv', index=False)
+    
+    return vocabulary_df
+
+
