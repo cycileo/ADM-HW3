@@ -443,6 +443,7 @@ def create_inverted_index(processed_descriptions, vocabulary_df, file_path="inve
         with open(file_path, 'r') as f:
             print("Loading inverted index from file.")
             inverted_index = json.load(f)
+            inverted_index = {int(k): v for k, v in inverted_index.items()}
     else:
         # If the file does not exist, create the inverted index
         print("Creating inverted index...")
@@ -488,11 +489,11 @@ def execute_query(query, inverted_index, vocabulary_df):
     # Preprocess the query to tokenize and clean the terms
     # Assumes query is a single string, and preprocesses it to get a list of terms
     query_list = preprocess_text([query])[0]  # preprocess_text returns a list of lists, we get the first (and only) list
-    
+
     # Get the term_ids corresponding to the terms in the query
     # 'isin' checks if each term in the query is present in the vocabulary DataFrame
     # 'term_id' is the column in the vocabulary that maps each term to a unique integer ID
-    terms_id = vocabulary_df[vocabulary_df['term'].isin(query_list)]['term_id'].astype(str).tolist()
+    terms_id = (vocabulary_df[vocabulary_df['term'].isin(query_list)]['term_id'].astype(str)).tolist()
     
     # Initialize a list to store the document sets for each term in the query
     documents_id = []
@@ -500,8 +501,8 @@ def execute_query(query, inverted_index, vocabulary_df):
     # For each term_id from the query, retrieve the set of document IDs from the inverted index
     for term_id in terms_id:
         # Convert the term_id into a set of document IDs
-        documents_id.append(set(inverted_index[term_id]))
-    
+        documents_id.append(set(inverted_index[int(term_id)]))
+   
     # Start with the set of document IDs for the first term
     intersection_result = documents_id[0]
     
@@ -509,6 +510,6 @@ def execute_query(query, inverted_index, vocabulary_df):
     # The intersection operator '&=' finds common elements between sets
     for s in documents_id[1:]:
         intersection_result &= s  # Keep only the documents that contain all terms in the query
-    
+   
     # Return the list of document IDs that match all query terms
     return list(intersection_result)
