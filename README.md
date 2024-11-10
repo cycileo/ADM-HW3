@@ -6,7 +6,7 @@
 
 ## Team Members
 - [Leonardo Rocci](https://github.com/cycileo)
-- [Teammate 2](https://github.com/teammate2githubprofile)
+- [Laura Moreno](https://github.com/lamorenorod)
 - [Teammate 3](https://github.com/teammate3githubprofile)
 - [Teammate 4](https://github.com/teammate4githubprofile)
 
