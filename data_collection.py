@@ -392,7 +392,7 @@ def preprocess_text(descriptions):
 # Function to create 'vocabulary.csv' file
 def create_vocabulary(processed_descriptions):
     """
-    Creates a vocabulary file in CSV format, mapping each unique word (term) in the processed texts to a unique integer ID.
+    Checks if 'vocabulary.csv' exists. If it does, loads it as a DataFrame; if not, creates a vocabulary file in CSV format, mapping each unique word (term) in the processed texts to a unique integer ID.
 
     Parameters:
     processed_texts (list of list of str): A list of lists, where each sublist contains tokenized and processed words from a description.
@@ -401,17 +401,23 @@ def create_vocabulary(processed_descriptions):
     pd.DataFrame: A DataFrame containing the vocabulary, with each word mapped to a unique integer ID.
     """
     
-    # Flatten the list of lists into a single list and convert it to a set to keep only unique words
-    unique_terms = list(set([word for description in processed_descriptions for word in description]))
-    
-    # Create a DataFrame with term IDs and terms
-    vocabulary_df = pd.DataFrame({
-        'term_id': range(len(unique_terms)),  # Assign a unique integer ID to each term
-        'term': unique_terms
-    })
-    
-    # Save the vocabulary DataFrame to a CSV file named 'vocabulary.csv' without including the index
-    vocabulary_df.to_csv('vocabulary.csv', index=False)
+    # Check if the vocabulary file already exists
+    if os.path.exists('vocabulary.csv'):
+        print("Loading existing vocabulary file.")
+        vocabulary_df = pd.read_csv('vocabulary.csv')
+    else:
+        print("Creating new vocabulary file.")
+        # Flatten the list of lists into a single list and convert it to a set to keep only unique words
+        unique_terms = list(set([word for description in processed_descriptions for word in description]))
+        
+        # Create a DataFrame with term IDs and terms
+        vocabulary_df = pd.DataFrame({
+            'term_id': range(len(unique_terms)),  # Assign a unique integer ID to each term
+            'term': unique_terms
+        })
+        
+        # Save the vocabulary DataFrame to a CSV file named 'vocabulary.csv' without including the index
+        vocabulary_df.to_csv('vocabulary.csv', index=False)
     
     return vocabulary_df
 
@@ -442,6 +448,7 @@ def create_inverted_index(processed_descriptions, vocabulary_df, file_path="inve
         # If the file exists, load the inverted index from the file
         with open(file_path, 'r') as f:
             print("Loading inverted index from file.")
+            inverted_index = []
             inverted_index = json.load(f)
             inverted_index = {int(k): v for k, v in inverted_index.items()}
     else:
@@ -493,7 +500,7 @@ def execute_query(query, inverted_index, vocabulary_df):
     # Get the term_ids corresponding to the terms in the query
     # 'isin' checks if each term in the query is present in the vocabulary DataFrame
     # 'term_id' is the column in the vocabulary that maps each term to a unique integer ID
-    terms_id = (vocabulary_df[vocabulary_df['term'].isin(query_list)]['term_id'].astype(str)).tolist()
+    terms_id = (vocabulary_df[vocabulary_df['term'].isin(query_list)]['term_id'].astype(int)).tolist()
     
     # Initialize a list to store the document sets for each term in the query
     documents_id = []
@@ -501,7 +508,7 @@ def execute_query(query, inverted_index, vocabulary_df):
     # For each term_id from the query, retrieve the set of document IDs from the inverted index
     for term_id in terms_id:
         # Convert the term_id into a set of document IDs
-        documents_id.append(set(inverted_index[int(term_id)]))
+        documents_id.append(set(inverted_index[term_id]))
    
     # Start with the set of document IDs for the first term
     intersection_result = documents_id[0]
