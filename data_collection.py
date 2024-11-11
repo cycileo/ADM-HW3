@@ -349,6 +349,7 @@ from nltk.tokenize import wordpunct_tokenize
 from nltk.stem import SnowballStemmer
 import re
 import json
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 # Function to preprocess restaurant descriptions by removing stopwords, cleaning punctuation, and applying stemming to improve search efficiency.
 def preprocess_text(descriptions):
@@ -359,7 +360,7 @@ def preprocess_text(descriptions):
     - Cleaning tokens of punctuation
     - Stemming each word to its root form
     
-    Parameters:
+    Args:
     descriptions (list of str): List of text descriptions to preprocess
     
     Returns:
@@ -394,7 +395,7 @@ def create_vocabulary(processed_descriptions):
     """
     Checks if 'vocabulary.csv' exists. If it does, loads it as a DataFrame; if not, creates a vocabulary file in CSV format, mapping each unique word (term) in the processed texts to a unique integer ID.
 
-    Parameters:
+    Args:
     processed_texts (list of list of str): A list of lists, where each sublist contains tokenized and processed words from a description.
 
     Returns:
@@ -484,7 +485,7 @@ def execute_query(query, inverted_index, vocabulary_df):
     """
     Executes a search query on an inverted index to find documents that contain all the terms in the query.
     
-    Parameters:
+    Args:
     query (str): The search query, typically a string of words.
     inverted_index (dict): The inverted index where keys are term_ids and values are lists of document indices (IDs).
     vocabulary_df (pd.DataFrame): A DataFrame that maps terms to their unique term_ids.
@@ -520,3 +521,66 @@ def execute_query(query, inverted_index, vocabulary_df):
    
     # Return the list of document IDs that match all query terms
     return list(intersection_result)
+
+
+# Function to compute the TF-IDF scores for terms in the given processed descriptions, and constructs an inverted index.
+def compute_tfIdf_scores(processed_descriptions, terms, file_path="tfIdf_inverted_index.json"):
+    """
+    If the inverted index with TF-IDF scores already exists in a JSON file, it loads it. Otherwise, it computes 
+    the TF-IDF scores from scratch and saves the inverted index to the specified file.
+
+    Args:
+        processed_descriptions (list of list of str): A list of processed restaurant descriptions, 
+                                                      where each description is a list of terms (strings).
+        terms (pandas.Series): A list or pandas Series containing the terms in the vocabulary, 
+                               which will be used for calculating the TF-IDF scores.
+        file_path (str): The file path where the inverted index with TF-IDF scores will be saved or loaded from. 
+                         Default is "tfIdf_inverted_index.json".
+
+    Returns:
+        dict: An inverted index where each key is a term ID and the value is a list of tuples. Each tuple contains:
+              - document ID (doc_idx): The index of the document in the `processed_descriptions` list.
+              - TF-IDF score: The score representing the relevance of the term to the document.
+    """
+
+    # Check if the inverted index file exists
+    if os.path.exists(file_path):
+        # If the file exists, load the inverted index from the file
+        with open(file_path, 'r') as f:
+            print("Loading inverted index with TF-IDF scores from file.")
+            tfIdf_inverted_index = {}
+            tfIdf_inverted_index = json.load(f)
+
+            # Convert the values in the inverted index from lists to tuples (doc_idx, score) for consistency
+            tfIdf_inverted_index = {term: [(int(doc_idx), score) for doc_idx, score in docs] 
+                                    for term, docs in tfIdf_inverted_index.items()}
+    else:
+        # Transform each description into a single string without modifying the original list of terms
+        processed_descriptions_str = [' '.join(description) for description in processed_descriptions]
+
+        # Initialize and apply the TfidfVectorizer using the specified vocabulary
+        tfIdf_model = TfidfVectorizer(vocabulary=terms.tolist())
+        tfIdf_scores = tfIdf_model.fit_transform(processed_descriptions_str).toarray()
+        
+        # Get the feature names (unique terms in the vocabulary)
+        words_set = tfIdf_model.get_feature_names_out()
+
+        # Build the inverted index with TF-IDF scores
+        tfIdf_inverted_index = {}
+        
+        # Iterate through all terms in the vocabulary
+        for term_idx, _ in enumerate(words_set):
+            tfIdf_inverted_index[term_idx] = []
+            
+            # For each term, add document IDs and corresponding TF-IDF scores to the inverted index
+            for doc_idx, score in enumerate(tfIdf_scores[:, term_idx]):
+                if score > 0:  # Consider only non-zero scores
+                    tfIdf_inverted_index[term_idx].append((doc_idx, score))
+        
+        # Save the inverted index to a JSON file for future use
+        with open(file_path, 'w') as f:
+            json.dump(tfIdf_inverted_index, f, indent=4)  # Save with indentation for readability
+            print(f"Inverted index with TF-IDF scores saved to {file_path}.")
+
+    # Return the computed (or loaded) inverted index with TF-IDF scores
+    return tfIdf_inverted_index
