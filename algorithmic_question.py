@@ -1,4 +1,4 @@
-def algorithmic_question(grid_list):
+def algorithm(t, n, grid_list):
     """
     This function processes a list of test cases, where each test case consists of a grid of coordinates. 
     It determines whether it is possible to visit all the coordinates starting from (0, 0), 
@@ -19,21 +19,21 @@ def algorithmic_question(grid_list):
                 or 
               - "NO\n" if it's impossible to collect all the packages.
     """
-    t = len(grid_list)  # Get the number of test cases
+
     results = ""  # Initialize an empty string to store results for all test cases
     
     # Loop through each test case
     for i in range(t):
         grid = grid_list[i]  # Get the current grid (list of packages)
         grid.append([0, 0])  # Add the starting point (0, 0) to the grid
-        N = len(grid)  # Get the total number of points (including the start)
+        n = len(grid)  # Get the total number of points (including the start)
         
         # Sort the grid by x-coordinate first, then by y-coordinate
         sorted_grid = sorted(grid, key=lambda x: (x[0], x[1]))
         path = ""  # Initialize an empty string to track the path
         
         # Process each consecutive pair of points
-        for i in range(0, N-1):
+        for i in range(0, n-1):
             result = ""  # Initialize the result for the current test case
             
             # Check if the path is valid (cannot go up and left at the same time or down and right)
