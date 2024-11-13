@@ -7,37 +7,34 @@ from nltk.tokenize import wordpunct_tokenize
 from nltk.stem import SnowballStemmer
 import re
 import json
-from sklearn.feature_extraction.text import TfidfVectorizer
 import os
 import pandas as pd
 import numpy as np
-import math
 from collections import defaultdict
 
-# Function to preprocess restaurant descriptions by removing stopwords, cleaning punctuation, and applying stemming to improve search efficiency.
-def preprocess_text(descriptions):
+def preprocess_text(texts):
     """
-    Preprocesses a list of restaurant descriptions by:
-    - Tokenizing each description
+    Preprocesses a list of words by:
+    - Tokenizing each text
     - Removing stopwords
     - Cleaning tokens of punctuation
     - Stemming each word to its root form
     
     Args:
-    descriptions (list of str): List of text descriptions to preprocess
+    text (list of str): List of texts to process
     
     Returns:
-    list of list of str: A list where each element is a list of processed tokens for a description
+    list of list of str: A list where each element is a list of processed tokens for a text
     """
     
-    processed_descriptions = []  # Holds the final processed tokens for each description
+    processed_texts = []  # Holds the final processed tokens for each text
     stop_words = set(stopwords.words('english'))  # Load English stopwords set
     stemmer = SnowballStemmer('english')  # Initialize the Snowball stemmer for English
 
-    # Process each description individually
-    for description in descriptions:
-        # Tokenize the description into words/punctuation using wordpunct_tokenize
-        tokens = wordpunct_tokenize(description)
+    # Process each text individually
+    for text in texts:
+        # Tokenize the text into words/punctuation using wordpunct_tokenize
+        tokens = wordpunct_tokenize(text)
         
         # Remove stopwords and lowercase each word for uniformity
         tokens_without_stopwords = [word for word in tokens if word.lower() not in stop_words]
@@ -49,17 +46,17 @@ def preprocess_text(descriptions):
         stemmed_tokens = [stemmer.stem(word) for word in cleaned_tokens]
         
         # Append the processed tokens for this description to the list
-        processed_descriptions.append(stemmed_tokens)
+        processed_texts.append(stemmed_tokens)
 
-    return processed_descriptions
+    return processed_texts
 
-# Function to create 'vocabulary.csv' file
-def create_vocabulary(processed_descriptions):
+def get_vocabulary(processed_texts, file_path = "vocabulary.csv"):
     """
-    Checks if 'vocabulary.csv' exists. If it does, loads it as a DataFrame; if not, creates a vocabulary file in CSV format, mapping each unique word (term) in the processed texts to a unique integer ID.
+    Checks if 'vocabulary.csv' exists. If it does, loads it as a DataFrame; if not, creates a vocabulary file in CSV format, mapping each unique word (term) in the processed texts 
+    to a unique integer ID.
 
     Args:
-    processed_texts (list of list of str): A list of lists, where each sublist contains tokenized and processed words from a description.
+    processed_texts (list of list of str): A list of lists, where each sublist contains tokenized and processed words from a text.
 
     Returns:
     pd.DataFrame: A DataFrame containing the vocabulary, with each word mapped to a unique integer ID.
@@ -67,12 +64,12 @@ def create_vocabulary(processed_descriptions):
     
     # Check if the vocabulary file already exists
     if os.path.exists('vocabulary.csv'):
-        print("Loading existing vocabulary file.")
+        print("Loading " + file_path + " file.")
         vocabulary_df = pd.read_csv('vocabulary.csv')
     else:
-        print("Creating new vocabulary file.")
+        print("Creating new " + file_path + " file.")
         # Flatten the list of lists into a single list and convert it to a set to keep only unique words
-        unique_terms = list(set([word for description in processed_descriptions for word in description]))
+        unique_terms = list(set([word for text in processed_texts for word in text]))
         
         # Create a DataFrame with term IDs and terms
         vocabulary_df = pd.DataFrame({
@@ -85,18 +82,17 @@ def create_vocabulary(processed_descriptions):
     
     return vocabulary_df
 
-# Function to create the inverted index dictionary and save it as 'inverted_index.json'
-def create_inverted_index(processed_descriptions, vocabulary_df, file_path="inverted_index.json"):
+def get_inverted_index(processed_texts, vocabulary_df, file_path="inverted_index.json"):
     """
-    Creates or loads an inverted index for a collection of documents (processed descriptions).
+    Creates or loads an inverted index for a collection of processed texts.
     
     The inverted index maps term IDs to lists of document indices containing the term. 
-    Document IDs are derived from the row index of the `processed_descriptions` list,
-    meaning the document ID corresponds to the index of the description in the list.
+    Document IDs are derived from the row index of the `processed_texts` list,
+    meaning the document ID corresponds to the index of the text in the list.
     
     Args:
-    processed_descriptions (list of list of str): A list of processed document descriptions, 
-                                                  where each description is a list of terms (strings).
+    processed_texts (list of list of str): A list of processed document texts, 
+                                                  where each text is a list of terms (strings).
     vocabulary_df (pandas.DataFrame): A DataFrame containing 'term' and 'term_id' columns. 
                                       It maps each term to a unique term_id.
     file_path (str): Path to the file where the inverted index is stored. Default is "inverted_index.json".
@@ -104,20 +100,20 @@ def create_inverted_index(processed_descriptions, vocabulary_df, file_path="inve
     Returns:
     dict: An inverted index, where keys are term IDs and values are lists of document indices
           (rows) that contain each term. Document IDs correspond to the indices of the 
-          descriptions in the `processed_descriptions` list.
+          texts in the `processed_texts` list.
     """
     
     # Check if the inverted index file exists
     if os.path.exists(file_path):
         # If the file exists, load the inverted index from the file
         with open(file_path, 'r') as f:
-            print("Loading inverted index from file.")
+            print("Loading Inverted Index from the" + file_path + " file.")
             inverted_index = []
             inverted_index = json.load(f)
             inverted_index = {int(k): v for k, v in inverted_index.items()}
     else:
         # If the file does not exist, create the inverted index
-        print("Creating inverted index...")
+        print("Creating Inverted Index...")
         
         # Create a mapping of terms to term_ids for fast lookup
         term_to_id = {term: term_id for term, term_id in zip(vocabulary_df['term'], vocabulary_df['term_id'])}
@@ -126,9 +122,9 @@ def create_inverted_index(processed_descriptions, vocabulary_df, file_path="inve
         inverted_index = {term_id: [] for term_id in vocabulary_df['term_id']}
         
         # Iterate over the documents
-        for doc_idx, description in enumerate(processed_descriptions):
+        for doc_idx, text in enumerate(processed_texts):
             # Use a set to avoid duplicate terms in a single document
-            unique_terms = set(description)
+            unique_terms = set(text)
             
             # For each unique term in the document, add the document index to the inverted index
             for term in unique_terms:
@@ -139,11 +135,10 @@ def create_inverted_index(processed_descriptions, vocabulary_df, file_path="inve
         # Save the inverted index to a JSON file
         with open(file_path, 'w') as f:
             json.dump(inverted_index, f, indent=4)  # Save with indentation for readability
-            print(f"Inverted index saved to {file_path}.")
+            print(f"Inverted Index saved to {file_path}.")
     
     return inverted_index
 
-# Function to execute a search query by finding documents that contain all terms in the query.
 def execute_conjunctive_query(query, inverted_index, vocabulary_df):
     """
     Executes a search query on an inverted index to find documents that contain all the terms in the query.
@@ -185,7 +180,6 @@ def execute_conjunctive_query(query, inverted_index, vocabulary_df):
     # Return the list of document IDs that match all query terms
     return list(intersection_result)
 
-
 def get_tfIdf(term, document, corpus):
     """
     Calculate the TF-IDF (Term Frequency-Inverse Document Frequency) score for a given term in a document.
@@ -219,7 +213,7 @@ def get_tfIdf(term, document, corpus):
        IDF is calculated to measure the importance of the `term` across the entire `corpus`. A term that appears in many documents is considered less informative, 
        while a term that appears in fewer documents is considered more informative.
        IDF is calculated by taking the logarithm of the total number of documents divided by the number of documents containing the term. 
-       The `+1` in both the numerator and denominator ensures that terms that appear in every document do not result in a division by zero.
+       The `+1` in both the denominator ensures that terms that appear in every document do not result in a division by zero.
 
        Formula:
        IDF = log10(total number of documents / number of documents containing the term)
@@ -245,7 +239,7 @@ def get_tfIdf(term, document, corpus):
     return tf * idf  # The TF-IDF score is the product of TF and IDF
 
 
-def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_description, file_path="tfIdf_inverted_index.json"):
+def get_tfIdf_inverted_index(inverted_index, vocabulary_df, processed_texts, file_path="tfIdf_inverted_index.json"):
     """
     Create or load a TF-IDF inverted index for a given corpus of documents, based on the term frequency (TF)
     and inverse document frequency (IDF) scores. The inverted index will map terms to the documents in which
@@ -257,9 +251,9 @@ def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_descriptio
     Parameters:
     - inverted_index (dict): A dictionary where the keys are term IDs and the values are lists of document IDs
                               in which the term appears.
-    - vocabulary (DataFrame): A DataFrame containing the terms in the corpus, where each term has a corresponding
+    - vocabulary_df (DataFrame): A DataFrame containing the terms in the corpus, where each term has a corresponding
                               unique term ID.
-    - processed_description (list of list of str): A list of processed documents, each represented as a list of terms.
+    - processed_texts (list of list of str): A list of processed texts, each represented as a list of terms.
     - file_path (str): The file path to save or load the inverted index with TF-IDF scores. Defaults to "tfIdf_inverted_index.json".
     
     Returns:
@@ -271,7 +265,7 @@ def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_descriptio
     if os.path.exists(file_path):
         # If the file exists, load the inverted index with TF-IDF scores from the file
         with open(file_path, 'r') as f:
-            print("Loading inverted index with TF-IDF scores from file.")
+            print("Loading Inverted Index with TF-IDF scores from the " + file_path + " file." )
             tfIdf_inverted_index = json.load(f)
             
             # Convert the values in the inverted index from lists to tuples (doc_idx, score) for consistency
@@ -279,15 +273,15 @@ def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_descriptio
             tfIdf_inverted_index = {int(term): [(int(doc_idx), score) for doc_idx, score in docs] 
                                     for term, docs in tfIdf_inverted_index.items()}
     else:
-        print("Creating inverted index with TF-IDF scores...")
+        print("Creating Inverted Index with TF-IDF scores...")
         
         # Initialize an empty dictionary to store the inverted index with TF-IDF scores
         tfIdf_inverted_index = {}
         
         # Iterate through all terms in the vocabulary
-        for term in vocabulary['term']:
+        for term in vocabulary_df['term']:
             # Get the term ID from the vocabulary DataFrame
-            term_id = int(vocabulary[vocabulary['term'] == term]['term_id'].iloc[0])
+            term_id = int(vocabulary_df[vocabulary_df['term'] == term]['term_id'].iloc[0])
             
             # Initialize an empty list to store document IDs and TF-IDF scores for the current term
             tfIdf_inverted_index[term_id] = []
@@ -295,7 +289,7 @@ def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_descriptio
             # For each document that contains the current term, calculate the TF-IDF score
             for doc_id in inverted_index[term_id]:
                 # Compute the TF-IDF score for the current term in the current document
-                tf_idf_score = get_tfIdf(term, processed_description[doc_id], processed_description)
+                tf_idf_score = get_tfIdf(term, processed_texts[doc_id], processed_texts)
                 
                 # Append the document ID and its corresponding TF-IDF score to the list for the current term
                 tfIdf_inverted_index[term_id].append((doc_id, tf_idf_score))
@@ -343,7 +337,7 @@ def cosine_similarity(doc_vector, query_vector):
     return dot_product / denominator if denominator != 0 else 0
 
 
-def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_description, top_k):
+def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_texts, top_k):
     """
     Executes a ranked query by calculating cosine similarity between a query vector (TF-IDF)
     and document vectors, using only the terms from the query that, once processed, exist in the vocabulary.
@@ -353,7 +347,7 @@ def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_d
     - inverted_index (dict): Dictionary with term IDs as keys and values as lists of tuples (document ID, TF-IDF score),
                              representing the inverted index for documents.
     - vocabulary_df (DataFrame): DataFrame of vocabulary terms, each with a unique term ID.
-    - processed_description (list of list of str): List of processed documents, each represented as a list of terms.
+    - processed_texts (list of list of str): List of processed texts, each represented as a list of terms.
     - top_k (int): Number of top-ranked documents to return based on similarity.
 
     Returns:
@@ -377,7 +371,7 @@ def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_d
     # Initialize the query vector, setting TF-IDF values for query terms
     query_vector = np.zeros(vocabulary_df.shape[0])
     for i in range(len(query_term_ids)):
-        query_vector[query_term_ids[i]] = get_tfIdf(query_list[i], query_list, processed_description)
+        query_vector[query_term_ids[i]] = get_tfIdf(query_list[i], query_list, processed_texts)
         
     # Initialize document vectors with default zero values for each term
     document_vectors = defaultdict(lambda: np.zeros(vocabulary_df.shape[0]))
@@ -394,7 +388,8 @@ def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_d
     # Rank documents by similarity scores, in descending order
     ranked_results = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     
+    if len(ranked_results) > top_k:
     # Limit the results to the top_k documents
-    ranked_results = ranked_results[:top_k]
+        ranked_results = ranked_results[:top_k]
     
     return ranked_results, not_found
