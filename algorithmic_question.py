@@ -31,10 +31,9 @@ def algorithm(t, n, grid_list):
         # Sort the grid by x-coordinate first, then by y-coordinate
         sorted_grid = sorted(grid, key=lambda x: (x[0], x[1]))
         path = ""  # Initialize an empty string to track the path
-        
+        result = ""  # Initialize the result for the current test case
         # Process each consecutive pair of points
         for i in range(0, n-1):
-            result = ""  # Initialize the result for the current test case
             
             # Check if the path is valid (cannot go up and left at the same time or down and right)
             if sorted_grid[i][0] < sorted_grid[i+1][0] and sorted_grid[i][1] > sorted_grid[i+1][1]:
@@ -53,7 +52,7 @@ def algorithm(t, n, grid_list):
                     path += "U" * n_steps  # Add 'U' for each step upwards
                 
                 # Add "YES" and the calculated steps to the result
-                result += "YES\n" + path + "\n"
+                result = "YES\n" + path + "\n"
         
         # Append the result for the current test case to the final results string
         results += result
