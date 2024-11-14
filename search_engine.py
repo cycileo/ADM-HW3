@@ -337,7 +337,7 @@ def cosine_similarity(doc_vector, query_vector):
     return dot_product / denominator if denominator != 0 else 0
 
 
-def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_texts, top_k):
+def execute_ranked_query1(query_terms, inverted_index, vocabulary_df, processed_texts, top_k):
     """
     Executes a ranked query by calculating cosine similarity between a query vector (TF-IDF)
     and document vectors, using only the terms from the query that, once processed, exist in the vocabulary.
@@ -388,8 +388,10 @@ def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_t
     # Rank documents by similarity scores, in descending order
     ranked_results = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     
-    if len(ranked_results) > top_k:
-    # Limit the results to the top_k documents
+
+    if top_k is not None and len(ranked_results) > top_k:
+        # Limit the results to the top_k documents
         ranked_results = ranked_results[:top_k]
+
     
     return ranked_results, not_found
