@@ -4,9 +4,8 @@ from tqdm import tqdm
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
-import glob 
-
-
+import glob
+import json
 
 # ========================================================
 #                 FIRST PART: COLLECTING THE LINKS
@@ -14,12 +13,11 @@ import glob
 #   from the Michelin Guide website.
 # - It gets the total number of pages from the 
 #   starting page, then iterates over all the pages
-#   collectin restaurant links
+#   collecting restaurant links
 # ========================================================
 
-
 # Function to get the restaurant links from all the pages
-def save_links(start_url, data_folder = 'DATA', file_name = 'restaurant_links.txt'): 
+def save_links(start_url, data_folder='DATA', file_name='restaurant_links.txt'): 
 
     # Skip the link collection if the file already exists
     file_path = os.path.join(data_folder, file_name)
@@ -27,7 +25,7 @@ def save_links(start_url, data_folder = 'DATA', file_name = 'restaurant_links.tx
         print("Links already collected.")
         with open(file_path, 'r') as f:
             links_num = sum(1 for line in f)
-        print(f"There are {links_num} link already collected")
+        print(f"There are {links_num} links already collected")
         return None
     
     # List to save all restaurant links
@@ -72,7 +70,7 @@ def save_links(start_url, data_folder = 'DATA', file_name = 'restaurant_links.tx
     # Print how many links are found
     print(f"Found {len(restaurant_links)} restaurant links")
 
-    # Create the folder to store the file if it doesn't alreday exists
+    # Create the folder to store the file if it doesn't already exist
     os.makedirs(data_folder, exist_ok=True)
     
     # Save the links to a .txt file
@@ -80,20 +78,16 @@ def save_links(start_url, data_folder = 'DATA', file_name = 'restaurant_links.tx
         for link in restaurant_links:
             f.write(link + "\n")
 
-
-
 # ========================================================
 #                 SECOND PART: DOWNLOADING THE PAGES
 # - This section downloads the restaurant pages using 
 #   ThreadPoolExecutor to make it faster
 # ========================================================
 
-
 # Function to read restaurant links from a file
 def read_links_from_file(file_path):
     with open(file_path, "r") as f:
         return [line.strip() for line in f.readlines()]
-
 
 # Function to download and save the HTML of a single restaurant
 def download_html(link, page_folder):
@@ -113,10 +107,9 @@ def download_html(link, page_folder):
         f.write(response.text)
     return None
 
-
 # Function to download and save the HTMLs of each restaurant in parallel
 def download_html_parallel(restaurant_links, data_folder):
-    # Create a subfolder for the HTMLs files
+    # Create a subfolder for the HTML files
     html_folder = os.path.join(data_folder, 'HTMLs')
     os.makedirs(html_folder, exist_ok=True)
     # Create a progress bar for all the links
@@ -146,7 +139,7 @@ def download_html_parallel(restaurant_links, data_folder):
                     progress_bar.update(1)
 
 # Main function to encapsulate everything
-def download_html_from_link_file(file_name = 'restaurant_links.txt', data_folder = 'DATA'):
+def download_html_from_link_file(file_name='restaurant_links.txt', data_folder='DATA'):
     # Read the restaurant links from the file
     file_path = os.path.join(data_folder, file_name)
     restaurant_links = read_links_from_file(file_path)
@@ -154,14 +147,11 @@ def download_html_from_link_file(file_name = 'restaurant_links.txt', data_folder
     download_html_parallel(restaurant_links, data_folder)    
     print("All html files have been saved.")
 
-
-
 # ========================================================
 #                 THIRD PART: EXTRACTING DATAS INTO TSVs
-# - This section gets the relevant datas from the downloaded htmls
-#   and store them in tsv files
+# - This section gets the relevant data from the downloaded HTMLs
+#   and stores them in TSV files
 # ========================================================
-
 
 # Function to extract data from an HTML
 def extract_info_from_html(html):
@@ -177,7 +167,7 @@ def extract_info_from_html(html):
     # Initialize fields
     address = city = postal_code = country = ""
     
-    # Extract the address text from the first `div`
+    # Extract the address text from the first div
     address_text = blocks[0].text.strip()
     
     # Split the components
@@ -204,7 +194,7 @@ def extract_info_from_html(html):
 
     facilities_services = []
 
-    # Extract services from the ul list under `restaurant-details__services`
+    # Extract services from the ul list under restaurant-details__services
     services_section = soup.find('div', class_='restaurant-details__services')
     if services_section:
         # Find the first ul in the section
@@ -233,22 +223,37 @@ def extract_info_from_html(html):
     if website_tag and 'href' in website_tag.attrs:
         website = website_tag['href'].strip()  # Get the URL and remove extra spaces
 
+    # Extract Region and coordinates from JSON-LD
+    region = latitude = longitude = ""
+    json_ld_script = soup.find('script', type='application/ld+json')
+    if json_ld_script:
+        try:
+            json_data = json.loads(json_ld_script.string)
+            address_data = json_data.get('address', {})
+            region = address_data.get('addressRegion', "")
+            latitude = json_data.get('latitude', None)
+            longitude = json_data.get('longitude', None)
+        except json.JSONDecodeError:
+            pass
+
     # Return the dictionary with the extracted data
     return {
         'restaurantName': restaurant_name,
         'address': address,
         'city': city,
         'postalCode': postal_code,
+        'region': region,
         'country': country,
+        'latitude': latitude,
+        'longitude': longitude,
         'priceRange': price_range,
         'cuisineType': cuisine_type,
         'description': description,
         'facilitiesServices': facilities_services, 
         'creditCards': credit_cards, 
         'phoneNumber': phone_number,
-        'website': website
+        'website': website  # Fixed missing comma here
     }
-
 
 # Function to process a single file
 def process_file(file_path, restaurant_index, tsv_folder):
@@ -270,7 +275,6 @@ def process_file(file_path, restaurant_index, tsv_folder):
         # Write the values (values from the dictionary)
         tsv_file.write('\t'.join(map(str, data.values())))
 
-
 # Function to get all the HTML files in the main HTMLs folder and subfolders
 def get_html_files_in_directory(directory):
     page_files = []
@@ -283,7 +287,6 @@ def get_html_files_in_directory(directory):
                 page_files.append(file_path)
     
     return page_files
-
 
 # Function to iterate over all htmls
 def html_to_tsv(data_folder='DATA', max_workers=4):
