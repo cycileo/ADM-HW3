@@ -474,7 +474,7 @@ def compute_query_similarity(query_terms, inverted_index, vocabulary_df, process
     return scores_vec
 
 
-def multiple_ranked_query(query_list, top_k, tfidf_list, voc_list, processed_list): 
+def multiple_ranked_query(query_list, tfidf_list, voc_list, processed_list, df): 
     
     scores = []
 
@@ -490,7 +490,32 @@ def multiple_ranked_query(query_list, top_k, tfidf_list, voc_list, processed_lis
         score2 = compute_query_similarity(query_list[2], tfidf_list[2], voc_list[2],  processed_list[2])
         scores.append(score2)
 
-    score = np.mean(scores, axis = 0)
+    # Trova gli indici con valori non nulli (o diversi da zero)
+    non_zero_indices = np.nonzero(score)[0]
 
-    return score
+    # Filtra il DataFrame per gli indici corrispondenti
+    filtered_df = df.loc[non_zero_indices].copy()
 
+    # Aggiungi una colonna con i punteggi corrispondenti
+    filtered_df['score'] = score[non_zero_indices]
+
+    return filtered_df
+
+
+
+# Funzione per applicare i filtri
+def apply_filters(df, price_range, regions, services):
+    # Mappa i range di prezzo in un formato numerico per confronto
+    price_map = {"€": 1, "€€": 2, "€€€": 3}
+    df['priceNum'] = df['priceRange'].map(price_map)
+    
+    # Filtro per fascia di prezzo
+    filtered = df[df['priceNum'].between(price_range[0], price_range[1])]
+    
+    # Filtro per regioni
+    filtered = filtered[filtered['region'].isin(regions)]
+    
+    # Filtro per servizi
+    filtered = filtered[filtered['facilitiesServices'].apply(lambda x: any(service in x for service in services))]
+    
+    return filtered

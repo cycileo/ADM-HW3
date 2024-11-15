@@ -5,6 +5,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 import glob
+import json
 
 
 
@@ -177,7 +178,7 @@ def extract_info_from_html(html):
     # Initialize fields
     address = city = postal_code = country = ""
     
-    # Extract the address text from the first `div`
+    # Extract the address text from the first div
     address_text = blocks[0].text.strip()
     
     # Split the components
@@ -204,7 +205,7 @@ def extract_info_from_html(html):
 
     facilities_services = []
 
-    # Extract services from the ul list under `restaurant-details__services`
+    # Extract services from the ul list under restaurant-details__services
     services_section = soup.find('div', class_='restaurant-details__services')
     if services_section:
         # Find the first ul in the section
@@ -233,13 +234,30 @@ def extract_info_from_html(html):
     if website_tag and 'href' in website_tag.attrs:
         website = website_tag['href'].strip()  # Get the URL and remove extra spaces
 
+    # Extract Region and coordinates from JSON-LD
+    region = latitude = longitude = ""
+    json_ld_script = soup.find('script', type='application/ld+json')
+    if json_ld_script:
+        try:
+            json_data = json.loads(json_ld_script.string)
+            address_data = json_data.get('address', {})
+            region = address_data.get('addressRegion', "")
+            latitude = json_data.get('latitude', None)
+            longitude = json_data.get('longitude', None)
+        except json.JSONDecodeError:
+            pass
+
+
     # Return the dictionary with the extracted data
     return {
         'restaurantName': restaurant_name,
         'address': address,
         'city': city,
         'postalCode': postal_code,
+        'region': region,
         'country': country,
+        'latitude': latitude,
+        'longitude': longitude,
         'priceRange': price_range,
         'cuisineType': cuisine_type,
         'description': description,
