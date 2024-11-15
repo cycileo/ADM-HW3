@@ -13,6 +13,12 @@ import pandas as pd
 import numpy as np
 import math
 from collections import defaultdict
+import ast
+import ipywidgets as widgets
+from IPython.display import display, clear_output, Image
+from ipywidgets import Layout, Checkbox, GridBox, Label, IntRangeSlider
+from tabulate import tabulate
+
 
 # Function to preprocess restaurant descriptions by removing stopwords, cleaning punctuation, and applying stemming to improve search efficiency.
 def preprocess_text(descriptions):
@@ -52,6 +58,7 @@ def preprocess_text(descriptions):
         processed_descriptions.append(stemmed_tokens)
 
     return processed_descriptions
+
 
 # Function to create 'vocabulary.csv' file
 def create_vocabulary(processed_descriptions, file_name=''):
@@ -154,47 +161,7 @@ def create_inverted_index(processed_descriptions, vocabulary_df, file_name=""):
     
     return inverted_index
 
-# Function to execute a search query by finding documents that contain all terms in the query.
-def execute_conjunctive_query(query, inverted_index, vocabulary_df):
-    """
-    Executes a search query on an inverted index to find documents that contain all the terms in the query.
-    
-    Args:
-    query (str): The search query, typically a string of words.
-    inverted_index (dict): The inverted index where keys are term_ids and values are lists of document indices (IDs).
-    vocabulary_df (pd.DataFrame): A DataFrame that maps terms to their unique term_ids.
 
-    Returns:
-    list: A list of document IDs that contain all the terms in the query.
-    """
-    
-    # Preprocess the query to tokenize and clean the terms
-    # Assumes query is a single string, and preprocesses it to get a list of terms
-    query_list = preprocess_text([query])[0]  # preprocess_text returns a list of lists, we get the first (and only) list
-
-    # Get the term_ids corresponding to the terms in the query
-    # 'isin' checks if each term in the query is present in the vocabulary DataFrame
-    # 'term_id' is the column in the vocabulary that maps each term to a unique integer ID
-    terms_id = (vocabulary_df[vocabulary_df['term'].isin(query_list)]['term_id'].astype(int)).tolist()
-    
-    # Initialize a list to store the document sets for each term in the query
-    documents_id = []
-    
-    # For each term_id from the query, retrieve the set of document IDs from the inverted index
-    for term_id in terms_id:
-        # Convert the term_id into a set of document IDs
-        documents_id.append(set(inverted_index[term_id]))
-   
-    # Start with the set of document IDs for the first term
-    intersection_result = documents_id[0]
-    
-    # Perform an intersection between all the document sets
-    # The intersection operator '&=' finds common elements between sets
-    for s in documents_id[1:]:
-        intersection_result &= s  # Keep only the documents that contain all terms in the query
-   
-    # Return the list of document IDs that match all query terms
-    return list(intersection_result)
 
 
 def get_tfIdf(term, document, corpus):
@@ -325,6 +292,27 @@ def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_descriptio
     return tfIdf_inverted_index
 
 
+
+def get_bonus_lists(df): 
+    df['processedName'] = preprocess_text(df['restaurantName'].astype(str))
+    df['processedCity'] = preprocess_text(df['city'])
+    df['processedCuisine'] = preprocess_text(df['cuisineType'])
+    name_voc = create_vocabulary(df['processedName'], 'name')
+    city_voc = create_vocabulary(df['processedCity'], 'city')
+    cuis_voc = create_vocabulary(df['processedCuisine'], 'cuis')
+    name_inv_ind = create_inverted_index(df['processedName'], name_voc, 'name')
+    city_inv_ind = create_inverted_index(df['processedCity'], city_voc, 'city')
+    cuis_inv_ind = create_inverted_index(df['processedCuisine'], cuis_voc, 'cuis')
+    name_tfidf = create_tfIdf_inverted_index(name_inv_ind, name_voc, df['processedName'], 'name')
+    city_tfidf = create_tfIdf_inverted_index(city_inv_ind, city_voc, df['processedCity'], 'city')
+    cuis_tfidf = create_tfIdf_inverted_index(cuis_inv_ind, cuis_voc, df['processedCuisine'], 'cuis')
+    tfidf_list = [name_tfidf, city_tfidf, cuis_tfidf]
+    voc_list = [name_voc, city_voc, cuis_voc]
+    processed_list = [df['processedName'], df['processedCity'], df['processedCuisine']]
+    return (tfidf_list, voc_list, processed_list)
+
+
+
 def cosine_similarity(doc_vector, query_vector):
     """
     Calculate the cosine similarity between two vectors.
@@ -360,162 +348,314 @@ def cosine_similarity(doc_vector, query_vector):
 
 
 
-def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_texts, top_k):
-    """
-    Executes a ranked query by calculating cosine similarity between a query vector (TF-IDF)
-    and document vectors, using only the terms from the query that, once processed, exist in the vocabulary.
-
-    Parameters:
-    - query_terms (str): Query input as a space-separated string of terms.
-    - inverted_index (dict): Dictionary with term IDs as keys and values as lists of tuples (document ID, TF-IDF score),
-                             representing the inverted index for documents.
-    - vocabulary_df (DataFrame): DataFrame of vocabulary terms, each with a unique term ID.
-    - processed_texts (list of list of str): List of processed texts, each represented as a list of terms.
-    - top_k (int): Number of top-ranked documents to return based on similarity.
-
-    Returns:
-    - ranked_results (list): List of tuples, each containing a document ID and its similarity score.
-    - not_found (str): Message listing terms from the query that were not found in the vocabulary.
-    """
-    
-    # Tokenize and clean query terms
-    query_list = preprocess_text([query_terms])[0]
-    
-    # Filter out terms that are not in the vocabulary and store those not found
-    no_matches = [term for term in query_list if term not in vocabulary_df['term'].values]
-    query_list = [term for term in query_list if term in vocabulary_df['term'].values]
-
-    # If any query terms were not found, create a message with those terms
-    not_found = "No matches found for these terms: " + ', '.join(list(set(no_matches))) if no_matches else ""
-
-    # Map query terms to their corresponding term IDs from the vocabulary
-    query_term_ids = (vocabulary_df[vocabulary_df['term'].isin(query_list)]).set_index('term').loc[query_list].reset_index()['term_id'].astype(int).tolist()
-
-    # Initialize the query vector, setting TF-IDF values for query terms
-    query_vector = np.zeros(vocabulary_df.shape[0])
-    for i in range(len(query_term_ids)):
-        query_vector[query_term_ids[i]] = get_tfIdf(query_list[i], query_list, processed_texts)
-        
-    # Initialize document vectors with default zero values for each term
-    document_vectors = defaultdict(lambda: np.zeros(vocabulary_df.shape[0]))
-    
-    # Populate document vectors with TF-IDF scores from the inverted index
-    for term_id in vocabulary_df['term_id']:
-        if term_id in inverted_index:
-            for doc_id, tfidf_score in inverted_index[term_id]:
-                document_vectors[doc_id][term_id] = tfidf_score
-    
-    # Compute cosine similarity for each document vector against the query vector
-    scores = {doc_id: cosine_similarity(doc_vector, query_vector) for doc_id, doc_vector in document_vectors.items()}
-    
-    # Rank documents by similarity scores, in descending order
-    ranked_results = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    
-    if len(ranked_results) > top_k:
-    # Limit the results to the top_k documents
-        ranked_results = ranked_results[:top_k]
-    
-    return ranked_results, not_found
-
-
 def compute_query_similarity(query_terms, inverted_index, vocabulary_df, processed_texts):
     """
-    Executes a ranked query by calculating cosine similarity between a query vector (TF-IDF)
-    and document vectors, using only the terms from the query that, once processed, exist in the vocabulary.
+    Executes a ranked query by calculating the cosine similarity between a query vector (TF-IDF)
+    and document vectors, using only the terms from the query that exist in the vocabulary.
 
-    Parameters:
-    - query_terms (str): Query input as a space-separated string of terms.
-    - inverted_index (dict): Dictionary with term IDs as keys and values as lists of tuples (document ID, TF-IDF score),
-                             representing the inverted index for documents.
-    - vocabulary_df (DataFrame): DataFrame of vocabulary terms, each with a unique term ID.
-    - processed_texts (list of list of str): List of processed texts, each represented as a list of terms.
-    - top_k (int): Number of top-ranked documents to return based on similarity.
+    The function performs the following steps:
+    - Tokenizes and processes the input query.
+    - Filters out query terms that are not found in the vocabulary.
+    - Creates a query vector using the TF-IDF values for the terms present in the vocabulary.
+    - Calculates cosine similarity between the query vector and the document vectors.
 
+    Args:
+        query_terms (str): Query input as a space-separated string of terms.
+        inverted_index (dict): Dictionary where each key is a term ID, and each value is a list of tuples 
+                               (document ID, TF-IDF score) representing the inverted index for documents.
+        vocabulary_df (DataFrame): DataFrame containing the vocabulary terms and their corresponding term IDs.
+        processed_texts (list of list of str): List of preprocessed texts, where each text is a list of terms.
+        
     Returns:
-    - ranked_results (list): List of tuples, each containing a document ID and its similarity score.
-    - not_found (str): Message listing terms from the query that were not found in the vocabulary.
+        np.ndarray: Array of cosine similarity scores for each document.
     """
     
-    # Tokenize and clean query terms
+    # Preprocess the input query and tokenize it
     query_list = preprocess_text([query_terms])[0]
     
-    # Filter out terms that are not in the vocabulary and store those not found
-    no_matches = [term for term in query_list if term not in vocabulary_df['term'].values]
+    # Filter out query terms that are not present in the vocabulary
     query_list = [term for term in query_list if term in vocabulary_df['term'].values]
 
-    # If any query terms were not found, create a message with those terms
-    not_found = "No matches found for these terms: " + ', '.join(list(set(no_matches))) if no_matches else ""
-
     # Map query terms to their corresponding term IDs from the vocabulary
-    query_term_ids = (vocabulary_df[vocabulary_df['term'].isin(query_list)]).set_index('term').loc[query_list].reset_index()['term_id'].astype(int).tolist()
+    query_term_ids = (vocabulary_df[vocabulary_df['term'].isin(query_list)])
+    query_term_ids = query_term_ids.set_index('term').loc[query_list].reset_index()['term_id'].astype(int).tolist()
 
-    # Initialize the query vector, setting TF-IDF values for query terms
+    # Initialize the query vector with zeros, one for each term in the vocabulary
     query_vector = np.zeros(vocabulary_df.shape[0])
     for i in range(len(query_term_ids)):
+        # Set the TF-IDF value for each query term
         query_vector[query_term_ids[i]] = get_tfIdf(query_list[i], query_list, processed_texts)
         
-    # Initialize document vectors with default zero values for each term
+    # Initialize document vectors as a defaultdict with zero vectors for each term
     document_vectors = defaultdict(lambda: np.zeros(vocabulary_df.shape[0]))
     
-    # Populate document vectors with TF-IDF scores from the inverted index
+    # Populate document vectors with the TF-IDF values from the inverted index
     for term_id in vocabulary_df['term_id']:
         if term_id in inverted_index:
             for doc_id, tfidf_score in inverted_index[term_id]:
                 document_vectors[doc_id][term_id] = tfidf_score
     
-    # Compute cosine similarity for each document vector against the query vector
+    # Calculate cosine similarity between the query vector and each document vector
     scores = {doc_id: cosine_similarity(doc_vector, query_vector) for doc_id, doc_vector in document_vectors.items()}
 
+    # Find the maximum document ID for creating the final score vector
     max_doc_id = max(scores.keys())
     
+    # Create an array to store the similarity scores for each document
     scores_vec = np.zeros(max_doc_id + 1)
     for doc_id, score in scores.items():
         scores_vec[doc_id] = score
+
     return scores_vec
 
 
-def multiple_ranked_query(query_list, tfidf_list, voc_list, processed_list, df): 
-    
+def multiple_ranked_query(query_list, tfidf_list, voc_list, processed_list, df):
+    """
+    Executes ranked queries for multiple fields with weighted importance, calculates cosine similarity 
+    for each field-specific query, and filters the documents.
+
+    Args:
+        query_list (list of str): A list of field-specific queries. Each query corresponds to a specific field.
+        tfidf_list (list of dict): A list of TF-IDF inverted indices, each corresponding to one field.
+        voc_list (list of DataFrame): A list of vocabulary DataFrames for the terms of each field.
+        processed_list (list of list of str): A list of preprocessed terms for each field's query.
+        df (DataFrame): The dataset of restaurants, containing details such as name, city, and cuisine type.
+        weights (list of float, optional): A list of weights for each field. Default is [0.5, 0.3, 0.2].
+
+    Returns:
+        DataFrame: A filtered DataFrame with documents that match the queries. Includes a new column, `score`, 
+                   with the weighted similarity score across all fields.
+    """
+    # Weights for the search field matches
+    weights = [0.55, 0.30, 0.15]
+
     scores = []
 
-    if query_list[0]: 
-        score0 = compute_query_similarity(query_list[0], tfidf_list[0], voc_list[0],  processed_list[0])
-        scores.append(score0)
+    # Iterate over the queries corresponding to different fields
+    for i in range(len(query_list)):
+        if query_list[i]:  # Skip empty queries
+            field_score = compute_query_similarity(query_list[i], tfidf_list[i], voc_list[i], processed_list[i])
+            scores.append(weights[i] * field_score)  # Apply weight to the score
     
-    if query_list[1]: 
-        score1 = compute_query_similarity(query_list[1], tfidf_list[1], voc_list[1],  processed_list[1])
-        scores.append(score1)
-    
-    if query_list[1]: 
-        score2 = compute_query_similarity(query_list[2], tfidf_list[2], voc_list[2],  processed_list[2])
-        scores.append(score2)
+    # Calculate the weighted sum of scores, skipping missing queries
+    score = np.sum(scores, axis=0)
 
-    # Trova gli indici con valori non nulli (o diversi da zero)
+    # Find indices of documents with non-zero similarity scores
     non_zero_indices = np.nonzero(score)[0]
 
-    # Filtra il DataFrame per gli indici corrispondenti
+    # Filter the dataset to include only relevant documents
     filtered_df = df.loc[non_zero_indices].copy()
 
-    # Aggiungi una colonna con i punteggi corrispondenti
+    # Add a 'score' column with the computed similarity scores
     filtered_df['score'] = score[non_zero_indices]
 
     return filtered_df
 
 
 
-# Funzione per applicare i filtri
-def apply_filters(df, price_range, regions, services):
-    # Mappa i range di prezzo in un formato numerico per confronto
-    price_map = {"€": 1, "€€": 2, "€€€": 3}
-    df['priceNum'] = df['priceRange'].map(price_map)
+
+# Funzione per convertire una stringa in lista
+def convert_to_list(value):
+    try:
+        return ast.literal_eval(value)  # Converte la stringa in una lista
+    except (ValueError, SyntaxError):  # Gestisce eventuali errori di conversione
+        return value  # Se la conversione fallisce, restituisce il valore originale (potrebbe non essere una lista)
+
+def display_results_and_filters(df_res, top_k=10):
+    # Contenitore separato per i risultati
+    results_output = widgets.Output()
+
+    # Definire i filtri manualmente, se necessario
+    regions_filter = []  # Impostazione di un filtro vuoto per la regione (o puoi definirlo con un altro valore)
+    list_reg = sorted(df_res["region"].unique())
+
+    # Creazione delle checkbox per le regioni
+    region_checkboxes = [
+        Checkbox(value=(region in regions_filter), description=region)
+        for region in list_reg
+    ]
+
+    # Etichetta per il filtro delle regioni
+    filter_label = Label(value="Filter by Region")
+
+    # Doppio slider per il filtro del prezzo
+    price_range_slider = IntRangeSlider(
+        value=[1, 4],
+        min=1,
+        max=4,
+        step=1,
+        description='Price Range:',
+        style={'description_width': 'initial'},
+        continuous_update=False
+    )
+
+    # Filtro per i servizi e carte di credito
+    facilities_filter = []
+    credit_cards_filter = []
+
+    # Estrai le stringhe da convertire in liste (se sono stringhe di liste)
+    df_res['facilitiesServices'] = df_res['facilitiesServices'].apply(convert_to_list)
+    df_res['creditCards'] = df_res['creditCards'].apply(convert_to_list)
+
+    # Crea le checkbox per i servizi
+    list_facilities = sorted(set([item for sublist in df_res['facilitiesServices'] for item in sublist]))
+    facilities_checkboxes = [
+        Checkbox(value=(facility in facilities_filter), description=facility)
+        for facility in list_facilities
+    ]
+
+    # Crea le checkbox per le carte di credito
+    list_credit_cards = sorted(set([item for sublist in df_res['creditCards'] for item in sublist]))
+    credit_cards_checkboxes = [
+        Checkbox(value=(card in credit_cards_filter), description=card)
+        for card in list_credit_cards
+    ]
+
+    # Etichetta per il filtro dei servizi
+    facilities_label = Label(value="Filter by Services")
+
+    # Etichetta per il filtro delle carte di credito
+    credit_cards_label = Label(value="Filter by Credit Cards")
+
+    # Funzione per aggiornare i risultati
+    def update_results(_=None):
+        # Filtro per le regioni
+        selected_regions = [
+            checkbox.description for checkbox in region_checkboxes if checkbox.value
+        ]
+        filtered_df = (
+            df_res[df_res["region"].isin(selected_regions)]
+            if selected_regions
+            else df_res
+        )
+
+        # Filtro per la lunghezza del prezzo (basato sul range dello slider)
+        min_length, max_length = price_range_slider.value
+        filtered_df = filtered_df[filtered_df['priceRange'].apply(lambda x: min_length <= len(x) <= max_length)]
+
+        # Filtro per i servizi (modificato per essere esclusivo)
+        selected_facilities = [
+            checkbox.description for checkbox in facilities_checkboxes if checkbox.value
+        ]
+        if selected_facilities:
+            # Ogni ristorante deve avere **tutti** i servizi selezionati
+            filtered_df = filtered_df[filtered_df['facilitiesServices'].apply(lambda x: all(facility in x for facility in selected_facilities))]
+
+        # Filtro per le carte di credito (modificato per essere esclusivo)
+        selected_cards = [
+            checkbox.description for checkbox in credit_cards_checkboxes if checkbox.value
+        ]
+        if selected_cards:
+            # Ogni ristorante deve avere **tutti** i tipi di carte selezionate
+            filtered_df = filtered_df[filtered_df['creditCards'].apply(lambda x: all(card in x for card in selected_cards))]
+
+        # Pulisce solo la parte dei risultati
+        with results_output:
+            clear_output(wait=True)
+            
+            # Calcola il numero di ristoranti che soddisfano i criteri
+            num_restaurants = len(filtered_df)
+            
+            # Mostra il messaggio con il numero di ristoranti
+            print(f"\n Found {num_restaurants} restaurant(s) matching the criteria.\n")
+            
+            # Se ci sono ristoranti da mostrare, ordina e mostra i top_k
+            if num_restaurants > 0:
+                top_restaurants = filtered_df.nlargest(top_k, 'score')
+                # Seleziona le colonne da visualizzare
+                display_columns = ['restaurantName', 'address', 'city', 'region', 'priceRange', 'cuisineType', 'website']
+                disp_df = top_restaurants[display_columns]
+
+                headers = ['Restaurant Name', 'Address', 'City', 'Region', 'Price', 'Cuisine Type', 'Website']
+                coalign = tuple(["left"]*6)
+                print(tabulate(disp_df, headers=headers, tablefmt='pretty', showindex=False, colalign=coalign))
+
+
+    # Osserva i cambiamenti delle checkbox e dello slider
+    for checkbox in region_checkboxes:
+        checkbox.observe(update_results, names="value")
     
-    # Filtro per fascia di prezzo
-    filtered = df[df['priceNum'].between(price_range[0], price_range[1])]
+    price_range_slider.observe(update_results, names="value")
+    for checkbox in facilities_checkboxes:
+        checkbox.observe(update_results, names="value")
+    for checkbox in credit_cards_checkboxes:
+        checkbox.observe(update_results, names="value")
+
+    # Griglia per i filtri delle regioni
+    region_grid = GridBox(
+        children=region_checkboxes,
+        layout=Layout(
+            grid_template_columns="repeat(4, 1fr)",  # 3 colonne
+            grid_gap="10px",
+            border="1px solid #ccc",
+            padding="10px",
+        ),
+    )
+
+    # Griglia per i filtri dei servizi
+    facilities_grid = GridBox(
+        children=facilities_checkboxes,
+        layout=Layout(
+            grid_template_columns="repeat(4, 1fr)",  # 3 colonne
+            grid_gap="10px",
+            border="1px solid #ccc",
+            padding="10px",
+        ),
+    )
+
+    # Griglia per i filtri delle carte di credito
+    credit_cards_grid = GridBox(
+        children=credit_cards_checkboxes,
+        layout=Layout(
+            grid_template_columns="repeat(4, 1fr)",  # 3 colonne
+            grid_gap="10px",
+            border="1px solid #ccc",
+            padding="10px",
+        ),
+    )
+
+    # Mostra i widget dei filtri
+    display(price_range_slider, filter_label, region_grid, facilities_label, facilities_grid, credit_cards_label, credit_cards_grid)
+
+    # Mostra i risultati iniziali all'interno del container separato
+    display(results_output)
+    update_results()  # Mostra subito i risultati iniziali
+
+
+
+def bonus_serach(tfidf_list, voc_list, processed_list, df): 
     
-    # Filtro per regioni
-    filtered = filtered[filtered['region'].isin(regions)]
-    
-    # Filtro per servizi
-    filtered = filtered[filtered['facilitiesServices'].apply(lambda x: any(service in x for service in services))]
-    
-    return filtered
+    # Definizione dei widget
+    query1 = widgets.Text(description="Restaurant:")
+    query2 = widgets.Text(description="City:")
+    query3 = widgets.Text(description="Cuisine Type:")
+    search_button = widgets.Button(description="Search")
+
+    # Menu a discesa per il numero di risultati (con una larghezza più piccola)
+    results_dropdown = widgets.Dropdown(
+        options=[10, 20, 50, 100],
+        value=10,  # Valore predefinito
+        description='Results:',
+        style={'description_width': 'initial'},
+        layout=widgets.Layout(width='150px')  # Imposta una larghezza fissa
+    )
+
+    # Contenitore per organizzare i widget in una riga (search_box con il dropdown a destra)
+    search_box = widgets.HBox([widgets.VBox([query1, query2, query3]), results_dropdown, search_button])
+    display(search_box)
+
+    # Callback per il pulsante
+    def on_search_clicked(_):
+        clear_output(wait=True)
+        display(search_box)
+        query = [query1.value, query2.value, query3.value]
+        top_k = results_dropdown.value  # Ottieni il numero di risultati selezionato
+        if query1.value=='' and query2.value=='' and query3.value=='':
+            display(Image(url="https://staticfanpage.akamaized.net/wp-content/uploads/sites/6/2019/09/math-lady-1200x675.jpg", width=600, height=340))
+            print("Can't read your mind \nNo result matching an empty query :(")
+        else:
+            # Chiamata alla funzione di ricerca
+            df_res = multiple_ranked_query(query, tfidf_list, voc_list, processed_list, df)
+            display_results_and_filters(df_res, top_k=top_k)  # Passa top_k per determinare il numero di risultati
+
+    search_button.on_click(on_search_clicked)

@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 import glob
 import json
-
+import ast
 
 
 # ========================================================
@@ -349,40 +349,17 @@ def create_combined_dataframe(folder_path, separator):
     # Find all .tsv files in the specified folder
     all_files = glob.glob(os.path.join(folder_path, "*.tsv"))
 
+    # Sort by name ID
+    sorted_files = sorted(all_files, key=lambda file: int(file.split('_')[-1].split('.')[0]))
+
     # Load each .tsv file as a DataFrame and store in a list
-    df_list = [pd.read_csv(file, sep=separator) for file in all_files]
+    df_list = [pd.read_csv(file, sep=separator) for file in sorted_files]
     
     # Concatenate all DataFrames in the list into a single DataFrame
     combined_df = pd.concat(df_list, ignore_index=True)
 
+    # Convert back string to list of strings
+    combined_df['facilitiesServices'] = combined_df['facilitiesServices'].apply(ast.literal_eval)
+    combined_df['creditCards'] = combined_df['creditCards'].apply(ast.literal_eval)
+
     return combined_df
-
-# Function to create the dataframe for the dataset
-def create_combined_dataframe_ID(folder_path):
-    """
-    Creates a combined DataFrame from all .tsv files in a specified folder.
-
-    Parameters:
-    - folder_path: Path to the folder containing .tsv files.
-    - separator: Delimiter used in the .tsv files (default: ',').
-
-    Returns:
-    - DataFrame containing all combined data.
-    """
-    # Find all .tsv files in the specified folder
-    all_files = glob.glob(os.path.join(folder_path, "TSVs/*.tsv"))
-
-    df_list = []
-
-    # Load each .tsv file as a DataFrame, saving the restaurant ID, and store in a list
-    for file in all_files:
-        restaurant_id = int(file.split('_')[-1].split('.')[0])  # Extract unique ID
-        data = pd.read_csv(file, sep='\t')
-        data['restaurant_id'] = int(restaurant_id)  # Add ID as a new column
-        df_list.append(data)
-
-    # Concatenate all DataFrames in the list into a single DataFrame
-    combined_df = pd.concat(df_list, ignore_index=True)
-    df = combined_df.set_index('restaurant_id')
-
-    return df
