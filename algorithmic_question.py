@@ -34,9 +34,9 @@ def algorithm(t, n, grid_list):
         result = ""  # Initialize the result for the current test case
         # Process each consecutive pair of points
         for i in range(0, n-1):
-            
+            # The robot cannot go left because the first ordering with respect to x. So we have to check it cannot go down.
             # Check if the path is valid (cannot go up and left at the same time or down and right)
-            if sorted_grid[i][0] < sorted_grid[i+1][0] and sorted_grid[i][1] > sorted_grid[i+1][1]:
+            if sorted_grid[i][1] > sorted_grid[i+1][1]:
                 result = "NO\n"  # If the path is invalid, return "NO"
                 break
             # If the path is valid
