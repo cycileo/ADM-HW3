@@ -1,5 +1,5 @@
 # ========================================================
-#                 SECOND EXERCISE: SEARCH ENGINE
+#                 FIFTH EXERCISE: BONUS
 # ========================================================
 
 from nltk.corpus import stopwords
@@ -79,10 +79,12 @@ def create_vocabulary(processed_descriptions, file_name=''):
 
     # Check if the vocabulary file already exists
     if os.path.exists(file_path):
-        print("Loading existing vocabulary file.")
+        print(f"Loading existing vocabulary file for the field: {file_name}." if file_name
+              else "Loading existing vocabulary file.")
         vocabulary_df = pd.read_csv(file_path)
     else:
-        print("Creating new vocabulary file.")
+        print("Creating new vocabulary file for the {file_name} field." if file_name
+              else "Loading existing vocabulary file.")
         # Flatten the list of lists into a single list and convert it to a set to keep only unique words
         unique_terms = list(set([word for description in processed_descriptions for word in description]))
         
@@ -129,13 +131,15 @@ def create_inverted_index(processed_descriptions, vocabulary_df, file_name=""):
     if os.path.exists(file_path):
         # If the file exists, load the inverted index from the file
         with open(file_path, 'r') as f:
-            print("Loading inverted index from file.")
+            print(f"Loading inverted index from file for the field: {file_name}." if file_name
+                  else "Loading inverted index from file. ")
             inverted_index = []
             inverted_index = json.load(f)
             inverted_index = {int(k): v for k, v in inverted_index.items()}
     else:
         # If the file does not exist, create the inverted index
-        print("Creating inverted index...")
+        print(f"Creating inverted index for the {file_name} field..." if file_name
+              else "Creating inverted index...")
         
         # Create a mapping of terms to term_ids for fast lookup
         term_to_id = {term: term_id for term, term_id in zip(vocabulary_df['term'], vocabulary_df['term_id'])}
@@ -254,7 +258,8 @@ def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_descriptio
     if os.path.exists(file_path):
         # If the file exists, load the inverted index with TF-IDF scores from the file
         with open(file_path, 'r') as f:
-            print("Loading inverted index with TF-IDF scores from file.")
+            print(f"Loading inverted index with TF-IDF scores from file for the field: {file_name}." if file_name
+                  else "Loading inverted index with TF-IDF scores from file.")
             tfIdf_inverted_index = json.load(f)
             
             # Convert the values in the inverted index from lists to tuples (doc_idx, score) for consistency
@@ -293,7 +298,7 @@ def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_descriptio
 
 
 
-def get_bonus_lists(df): 
+def prepare_search_data(df): 
     df['processedName'] = preprocess_text(df['restaurantName'].astype(str))
     df['processedCity'] = preprocess_text(df['city'])
     df['processedCuisine'] = preprocess_text(df['cuisineType'])
@@ -420,7 +425,6 @@ def multiple_ranked_query(query_list, tfidf_list, voc_list, processed_list, df):
         voc_list (list of DataFrame): A list of vocabulary DataFrames for the terms of each field.
         processed_list (list of list of str): A list of preprocessed terms for each field's query.
         df (DataFrame): The dataset of restaurants, containing details such as name, city, and cuisine type.
-        weights (list of float, optional): A list of weights for each field. Default is [0.5, 0.3, 0.2].
 
     Returns:
         DataFrame: A filtered DataFrame with documents that match the queries. Includes a new column, `score`, 
@@ -452,33 +456,25 @@ def multiple_ranked_query(query_list, tfidf_list, voc_list, processed_list, df):
     return filtered_df
 
 
+def display_results_and_filters(df_res, top_k):
+    """
+    Displays restaurant search results with interactive filters, allowing users to refine the results 
+    based on region, price range, facilities, and credit card options. The function dynamically updates 
+    the displayed results as filter selections are changed.
 
+    Args:
+        df_res (DataFrame): DataFrame containing restaurant details such as name, address, city, 
+                            region, price range, cuisine type, and facilities.
+        top_k (int, optional): The maximum number of top-ranked restaurants to display. Defaults to 10.
 
-# Funzione per convertire una stringa in lista
-def convert_to_list(value):
-    try:
-        return ast.literal_eval(value)  # Converte la stringa in una lista
-    except (ValueError, SyntaxError):  # Gestisce eventuali errori di conversione
-        return value  # Se la conversione fallisce, restituisce il valore originale (potrebbe non essere una lista)
+    Returns:
+        None: Results and filter widgets are displayed interactively in a Jupyter Notebook environment.
+    """
 
-def display_results_and_filters(df_res, top_k=10):
-    # Contenitore separato per i risultati
+    # Output container for the filtered results
     results_output = widgets.Output()
 
-    # Definire i filtri manualmente, se necessario
-    regions_filter = []  # Impostazione di un filtro vuoto per la regione (o puoi definirlo con un altro valore)
-    list_reg = sorted(df_res["region"].unique())
-
-    # Creazione delle checkbox per le regioni
-    region_checkboxes = [
-        Checkbox(value=(region in regions_filter), description=region)
-        for region in list_reg
-    ]
-
-    # Etichetta per il filtro delle regioni
-    filter_label = Label(value="Filter by Region")
-
-    # Doppio slider per il filtro del prezzo
+    # Create a price range slider for filtering restaurants by price
     price_range_slider = IntRangeSlider(
         value=[1, 4],
         min=1,
@@ -489,173 +485,170 @@ def display_results_and_filters(df_res, top_k=10):
         continuous_update=False
     )
 
-    # Filtro per i servizi e carte di credito
-    facilities_filter = []
-    credit_cards_filter = []
+    # Create checkboxes for region filters    
+    list_reg = sorted(df_res["region"].unique())  # Unique regions
+    region_checkboxes = [
+        Checkbox(value=False, description=region)
+        for region in list_reg
+    ]
 
-    # Estrai le stringhe da convertire in liste (se sono stringhe di liste)
-    df_res['facilitiesServices'] = df_res['facilitiesServices'].apply(convert_to_list)
-    df_res['creditCards'] = df_res['creditCards'].apply(convert_to_list)
-
-    # Crea le checkbox per i servizi
+    # Facility filters
     list_facilities = sorted(set([item for sublist in df_res['facilitiesServices'] for item in sublist]))
     facilities_checkboxes = [
-        Checkbox(value=(facility in facilities_filter), description=facility)
+        Checkbox(value=False, description=facility)
         for facility in list_facilities
     ]
 
-    # Crea le checkbox per le carte di credito
+    # Credit card filters
     list_credit_cards = sorted(set([item for sublist in df_res['creditCards'] for item in sublist]))
     credit_cards_checkboxes = [
-        Checkbox(value=(card in credit_cards_filter), description=card)
+        Checkbox(value=False, description=card)
         for card in list_credit_cards
     ]
 
-    # Etichetta per il filtro dei servizi
-    facilities_label = Label(value="Filter by Services")
-
-    # Etichetta per il filtro delle carte di credito
-    credit_cards_label = Label(value="Filter by Credit Cards")
-
-    # Funzione per aggiornare i risultati
     def update_results(_=None):
-        # Filtro per le regioni
-        selected_regions = [
-            checkbox.description for checkbox in region_checkboxes if checkbox.value
-        ]
+        """
+        Updates the displayed search results based on the selected filter criteria.
+        Args:
+            _: Placeholder for the input provided by `observe`, which is not used.
+        This function applies the following filters:
+        - Price range: Selects restaurants within the specified price range.
+        - Region: Filters restaurants based on selected regions.
+        - Facilities: Filters restaurants that offer all selected facilities.
+        - Credit Cards: Filters restaurants that accept all selected credit cards.
+        """
+
+        # Apply price range filter
+        min_length, max_length = price_range_slider.value
+        filtered_df = df_res[df_res['priceRange'].apply(lambda x: min_length <= len(x) <= max_length)]
+
+        # Apply region filter
+        selected_regions = [checkbox.description for checkbox in region_checkboxes if checkbox.value]
         filtered_df = (
-            df_res[df_res["region"].isin(selected_regions)]
-            if selected_regions
-            else df_res
+            filtered_df[filtered_df["region"].isin(selected_regions)]
+            if selected_regions else filtered_df
         )
 
-        # Filtro per la lunghezza del prezzo (basato sul range dello slider)
-        min_length, max_length = price_range_slider.value
-        filtered_df = filtered_df[filtered_df['priceRange'].apply(lambda x: min_length <= len(x) <= max_length)]
-
-        # Filtro per i servizi (modificato per essere esclusivo)
-        selected_facilities = [
-            checkbox.description for checkbox in facilities_checkboxes if checkbox.value
-        ]
+        # Apply facilities filter
+        selected_facilities = [checkbox.description for checkbox in facilities_checkboxes if checkbox.value]
         if selected_facilities:
-            # Ogni ristorante deve avere **tutti** i servizi selezionati
-            filtered_df = filtered_df[filtered_df['facilitiesServices'].apply(lambda x: all(facility in x for facility in selected_facilities))]
+            filtered_df = filtered_df[
+                filtered_df['facilitiesServices'].apply(lambda x: all(facility in x for facility in selected_facilities))
+            ]
 
-        # Filtro per le carte di credito (modificato per essere esclusivo)
-        selected_cards = [
-            checkbox.description for checkbox in credit_cards_checkboxes if checkbox.value
-        ]
+        # Apply credit card filter
+        selected_cards = [checkbox.description for checkbox in credit_cards_checkboxes if checkbox.value]
         if selected_cards:
-            # Ogni ristorante deve avere **tutti** i tipi di carte selezionate
-            filtered_df = filtered_df[filtered_df['creditCards'].apply(lambda x: all(card in x for card in selected_cards))]
+            filtered_df = filtered_df[
+                filtered_df['creditCards'].apply(lambda x: all(card in x for card in selected_cards))
+            ]
 
-        # Pulisce solo la parte dei risultati
+        # Display results
         with results_output:
             clear_output(wait=True)
-            
-            # Calcola il numero di ristoranti che soddisfano i criteri
             num_restaurants = len(filtered_df)
+            print(f"\nFound {num_restaurants} restaurant(s) matching the criteria.\n")
             
-            # Mostra il messaggio con il numero di ristoranti
-            print(f"\n Found {num_restaurants} restaurant(s) matching the criteria.\n")
-            
-            # Se ci sono ristoranti da mostrare, ordina e mostra i top_k
             if num_restaurants > 0:
                 top_restaurants = filtered_df.nlargest(top_k, 'score')
-                # Seleziona le colonne da visualizzare
                 display_columns = ['restaurantName', 'address', 'city', 'region', 'priceRange', 'cuisineType', 'website']
-                disp_df = top_restaurants[display_columns]
+                print(tabulate(
+                    top_restaurants[display_columns], 
+                    headers=['Restaurant Name', 'Address', 'City', 'Region', 'Price', 'Cuisine Type', 'Website'], 
+                    tablefmt='pretty', 
+                    showindex=False
+                ))
+            else:
+                print("Try reducing the number of selected services/cards or expanding the price range.")
 
-                headers = ['Restaurant Name', 'Address', 'City', 'Region', 'Price', 'Cuisine Type', 'Website']
-                coalign = tuple(["left"]*6)
-                print(tabulate(disp_df, headers=headers, tablefmt='pretty', showindex=False, colalign=coalign))
-
-
-    # Osserva i cambiamenti delle checkbox e dello slider
-    for checkbox in region_checkboxes:
+    # Attach observers to update the results on filter changes
+    for checkbox in region_checkboxes + facilities_checkboxes + credit_cards_checkboxes:
         checkbox.observe(update_results, names="value")
-    
     price_range_slider.observe(update_results, names="value")
-    for checkbox in facilities_checkboxes:
-        checkbox.observe(update_results, names="value")
-    for checkbox in credit_cards_checkboxes:
-        checkbox.observe(update_results, names="value")
 
-    # Griglia per i filtri delle regioni
-    region_grid = GridBox(
-        children=region_checkboxes,
-        layout=Layout(
-            grid_template_columns="repeat(4, 1fr)",  # 3 colonne
-            grid_gap="10px",
-            border="1px solid #ccc",
-            padding="10px",
-        ),
+    # Create filter grids for display
+    def create_filter_grid(checkboxes, title):
+        return GridBox(
+            children=checkboxes,
+            layout=Layout(
+                grid_template_columns="repeat(4, 1fr)",
+                grid_gap="10px",
+                border="1px solid #ccc",
+                padding="10px",
+            )
+        )
+
+    # Display filters and results
+    display(
+        price_range_slider, 
+        Label(value="Filter by Region"), 
+        create_filter_grid(region_checkboxes, "Region"),
+        Label(value="Filter by Services"),
+        create_filter_grid(facilities_checkboxes, "Facilities"),
+        Label(value="Filter by Credit Cards"),
+        create_filter_grid(credit_cards_checkboxes, "Credit Cards"),
+        results_output
     )
-
-    # Griglia per i filtri dei servizi
-    facilities_grid = GridBox(
-        children=facilities_checkboxes,
-        layout=Layout(
-            grid_template_columns="repeat(4, 1fr)",  # 3 colonne
-            grid_gap="10px",
-            border="1px solid #ccc",
-            padding="10px",
-        ),
-    )
-
-    # Griglia per i filtri delle carte di credito
-    credit_cards_grid = GridBox(
-        children=credit_cards_checkboxes,
-        layout=Layout(
-            grid_template_columns="repeat(4, 1fr)",  # 3 colonne
-            grid_gap="10px",
-            border="1px solid #ccc",
-            padding="10px",
-        ),
-    )
-
-    # Mostra i widget dei filtri
-    display(price_range_slider, filter_label, region_grid, facilities_label, facilities_grid, credit_cards_label, credit_cards_grid)
-
-    # Mostra i risultati iniziali all'interno del container separato
-    display(results_output)
-    update_results()  # Mostra subito i risultati iniziali
+    update_results()
 
 
 
-def bonus_serach(tfidf_list, voc_list, processed_list, df): 
-    
-    # Definizione dei widget
-    query1 = widgets.Text(description="Restaurant:")
-    query2 = widgets.Text(description="City:")
-    query3 = widgets.Text(description="Cuisine Type:")
-    search_button = widgets.Button(description="Search")
+def search(tfidf_list, voc_list, processed_list, df): 
+    """
+    This function sets up a search interface for restaurants based on user input. 
+    It allows users to search by restaurant name, city, or cuisine type, and 
+    to control the number of results to display.
 
-    # Menu a discesa per il numero di risultati (con una larghezza più piccola)
+    Parameters:
+    tfidf_list (list): List containing TF-IDF vectors for the restaurant data.
+    voc_list (list): Vocabulary list associated with the TF-IDF model.
+    processed_list (list): List of pre-processed restaurant data.
+    df (DataFrame): The DataFrame containing the restaurant dataset.
+
+    After gathering user input, the function calls `multiple_ranked_query` to 
+    process the search query and then calls `display_results_and_filters` to 
+    display the results with the specified number of top results (`top_k`).
+    """
+
+    # Define the widgets for user input (text fields for restaurant, city, and cuisine type,and a search button)
+    query1 = widgets.Text(description="Restaurant:")  # Input field for restaurant name
+    query2 = widgets.Text(description="City:")  # Input field for city
+    query3 = widgets.Text(description="Cuisine Type:")  # Input field for cuisine type
+    search_button = widgets.Button(description="Search")  # Button to trigger the search
+
+    # Dropdown menu to select the number of results to display
     results_dropdown = widgets.Dropdown(
-        options=[10, 20, 50, 100],
-        value=10,  # Valore predefinito
-        description='Results:',
-        style={'description_width': 'initial'},
-        layout=widgets.Layout(width='150px')  # Imposta una larghezza fissa
+        options=[10, 20, 50, 100],  # Options for number of results
+        value=10,  # Default number of results
+        description='Results:',  # Label for the dropdown
+        style={'description_width': 'initial'},  # Customize description width
+        layout=widgets.Layout(width='150px')  # Set fixed width for the dropdown
     )
 
-    # Contenitore per organizzare i widget in una riga (search_box con il dropdown a destra)
+    # Container to organize the widgets in a row (query box on the left, dropdown and button on the right)
     search_box = widgets.HBox([widgets.VBox([query1, query2, query3]), results_dropdown, search_button])
-    display(search_box)
+    display(search_box)  # Display the search interface
 
-    # Callback per il pulsante
+    # Callback function for when the search button is clicked
     def on_search_clicked(_):
-        clear_output(wait=True)
-        display(search_box)
-        query = [query1.value, query2.value, query3.value]
-        top_k = results_dropdown.value  # Ottieni il numero di risultati selezionato
-        if query1.value=='' and query2.value=='' and query3.value=='':
+        """
+        This function is triggered when the search button is clicked. It collects 
+        the input values, performs a search, and displays the filtered results.
+        """
+        clear_output(wait=True)  # Clear previous output
+        display(search_box)  # Redisplay the search interface
+        
+        query = [query1.value, query2.value, query3.value]  # Collect the values from the input fields
+        top_k = results_dropdown.value  # Get the number of results to display
+        
+        # If all search fields are empty, show a message and an image
+        if query1.value == '' and query2.value == '' and query3.value == '':
             display(Image(url="https://staticfanpage.akamaized.net/wp-content/uploads/sites/6/2019/09/math-lady-1200x675.jpg", width=600, height=340))
             print("Can't read your mind \nNo result matching an empty query :(")
         else:
-            # Chiamata alla funzione di ricerca
+            # Call the function to perform the search based on the queries
             df_res = multiple_ranked_query(query, tfidf_list, voc_list, processed_list, df)
-            display_results_and_filters(df_res, top_k=top_k)  # Passa top_k per determinare il numero di risultati
+            display_results_and_filters(df_res, top_k)  # Display the filtered results based on top_k
 
+    # Attach the callback function to the search button's click event
     search_button.on_click(on_search_clicked)
