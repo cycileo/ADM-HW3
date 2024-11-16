@@ -21,10 +21,10 @@ def preprocess_text(texts):
     - Stemming each word to its root form
     
     Args:
-    text (list of str): List of texts to process
+    - text (list of str): List of texts to process
     
     Returns:
-    list of list of str: A list where each element is a list of processed tokens for a text
+    - list of list of str: A list where each element is a list of processed tokens for a text
     """
     
     processed_texts = []  # Holds the final processed tokens for each text
@@ -56,10 +56,10 @@ def get_vocabulary(processed_texts, file_path = "vocabulary.csv"):
     to a unique integer ID.
 
     Args:
-    processed_texts (list of list of str): A list of lists, where each sublist contains tokenized and processed words from a text.
+    - processed_texts (list of list of str): A list of lists, where each sublist contains tokenized and processed words from a text.
 
     Returns:
-    pd.DataFrame: A DataFrame containing the vocabulary, with each word mapped to a unique integer ID.
+    - pd.DataFrame: A DataFrame containing the vocabulary, with each word mapped to a unique integer ID.
     """
     
     # Check if the vocabulary file already exists
@@ -91,14 +91,14 @@ def get_inverted_index(processed_texts, vocabulary_df, file_path="inverted_index
     meaning the document ID corresponds to the index of the text in the list.
     
     Args:
-    processed_texts (list of list of str): A list of processed document texts, 
+    - processed_texts (list of list of str): A list of processed document texts, 
                                                   where each text is a list of terms (strings).
-    vocabulary_df (pandas.DataFrame): A DataFrame containing 'term' and 'term_id' columns. 
+    - vocabulary_df (pandas.DataFrame): A DataFrame containing 'term' and 'term_id' columns. 
                                       It maps each term to a unique term_id.
-    file_path (str): Path to the file where the inverted index is stored. Default is "inverted_index.json".
+    - file_path (str): Path to the file where the inverted index is stored. Default is "inverted_index.json".
     
     Returns:
-    dict: An inverted index, where keys are term IDs and values are lists of document indices
+    - dict: An inverted index, where keys are term IDs and values are lists of document indices
           (rows) that contain each term. Document IDs correspond to the indices of the 
           texts in the `processed_texts` list.
     """
@@ -144,45 +144,55 @@ def execute_conjunctive_query(query, inverted_index, vocabulary_df):
     Executes a search query on an inverted index to find documents that contain all the terms in the query.
     
     Args:
-    query (str): The search query, typically a string of words.
-    inverted_index (dict): The inverted index where keys are term_ids and values are lists of document indices (IDs).
-    vocabulary_df (pd.DataFrame): A DataFrame that maps terms to their unique term_ids.
+    - query (str): The search query, typically a string of words.
+    - inverted_index (dict): The inverted index where keys are term_ids and values are lists of document indices (IDs).
+    - vocabulary_df (pd.DataFrame): A DataFrame that maps terms to their unique term_ids.
 
     Returns:
-    list: A list of document IDs that contain all the terms in the query.
+    - list: A list of document IDs that contain all the terms in the query.
+    - not_found (str): Message listing terms from the query that were not found in the vocabulary.
     """
     
     # Preprocess the query to tokenize and clean the terms
     # Assumes query is a single string, and preprocesses it to get a list of terms
     query_list = preprocess_text([query])[0]  # preprocess_text returns a list of lists, we get the first (and only) list
 
-    # Get the term_ids corresponding to the terms in the query
-    # 'isin' checks if each term in the query is present in the vocabulary DataFrame
-    # 'term_id' is the column in the vocabulary that maps each term to a unique integer ID
-    terms_id = (vocabulary_df[vocabulary_df['term'].isin(query_list)]['term_id'].astype(int)).tolist()
+    # Filter out terms that are not in the vocabulary and store those not found
+    no_matches = [term for term in query_list if term not in vocabulary_df['term'].values]
+    query_list = [term for term in query_list if term in vocabulary_df['term'].values]
+
+    # If any query terms were not found, create a message with those terms
+    not_found = "No matches found for these terms: " + ', '.join(list(set(no_matches))) if no_matches else ""
+    intersection_result = []
+
+    if len(query_list) > 0:
+        # Get the term_ids corresponding to the terms in the query
+        # 'isin' checks if each term in the query is present in the vocabulary DataFrame
+        # 'term_id' is the column in the vocabulary that maps each term to a unique integer ID
+        terms_id = (vocabulary_df[vocabulary_df['term'].isin(query_list)]['term_id'].astype(int)).tolist()
+        
+        # Initialize a list to store the document sets for each term in the query
+        documents_id = []
+        
+        # For each term_id from the query, retrieve the set of document IDs from the inverted index
+        for term_id in terms_id:
+            # Convert the term_id into a set of document IDs
+            documents_id.append(set(inverted_index[term_id]))
     
-    # Initialize a list to store the document sets for each term in the query
-    documents_id = []
-    
-    # For each term_id from the query, retrieve the set of document IDs from the inverted index
-    for term_id in terms_id:
-        # Convert the term_id into a set of document IDs
-        documents_id.append(set(inverted_index[term_id]))
-   
-    # Start with the set of document IDs for the first term
-    intersection_result = documents_id[0]
-    
-    # Perform an intersection between all the document sets
-    # The intersection operator '&=' finds common elements between sets
-    for s in documents_id[1:]:
-        intersection_result &= s  # Keep only the documents that contain all terms in the query
+        # Start with the set of document IDs for the first term
+        intersection_result = documents_id[0]
+        
+        # Perform an intersection between all the document sets
+        # The intersection operator '&=' finds common elements between sets
+        for s in documents_id[1:]:
+            intersection_result &= s  # Keep only the documents that contain all terms in the query
    
     # Return the list of document IDs that match all query terms
-    return list(intersection_result)
+    return list(intersection_result), not_found
 
 def get_tfIdf(term, document, corpus):
     """
-    Calculate the TF-IDF (Term Frequency-Inverse Document Frequency) score for a given term in a document.
+    Calculates the TF-IDF (Term Frequency-Inverse Document Frequency) score for a given term in a document.
     
     TF-IDF is a statistic used to evaluate the importance of a term within a document relative to a corpus of documents.
     The formula is:
@@ -192,7 +202,7 @@ def get_tfIdf(term, document, corpus):
         - TF (Term Frequency) measures how frequently a term appears in a document.
         - IDF (Inverse Document Frequency) measures the rarity of the term across the entire corpus.
 
-    Parameters:
+    Args:
     - term (str): The term for which the TF-IDF score is being calculated.
     - document (list of str): The list of words (terms) in the document being analyzed.
     - corpus (list of list of str): The entire collection of documents, each represented as a list of words.
@@ -213,7 +223,7 @@ def get_tfIdf(term, document, corpus):
        IDF is calculated to measure the importance of the `term` across the entire `corpus`. A term that appears in many documents is considered less informative, 
        while a term that appears in fewer documents is considered more informative.
        IDF is calculated by taking the logarithm of the total number of documents divided by the number of documents containing the term. 
-       The `+1` in both the denominator ensures that terms that appear in every document do not result in a division by zero.
+       The `+1` in the denominator ensures that terms that appear in every document do not result in a division by zero.
 
        Formula:
        IDF = log10(total number of documents / number of documents containing the term)
@@ -241,14 +251,14 @@ def get_tfIdf(term, document, corpus):
 
 def get_tfIdf_inverted_index(inverted_index, vocabulary_df, processed_texts, file_path="tfIdf_inverted_index.json"):
     """
-    Create or load a TF-IDF inverted index for a given corpus of documents, based on the term frequency (TF)
+    Creates or load a TF-IDF inverted index for a given corpus of documents, based on the term frequency (TF)
     and inverse document frequency (IDF) scores. The inverted index will map terms to the documents in which
     they appear along with their corresponding TF-IDF scores.
 
     If the inverted index already exists (stored in a JSON file), it will be loaded. If not, it will be generated
     from the vocabulary, the processed descriptions of the documents, and the pre-existing inverted index.
     
-    Parameters:
+    Args:
     - inverted_index (dict): A dictionary where the keys are term IDs and the values are lists of document IDs
                               in which the term appears.
     - vocabulary_df (DataFrame): A DataFrame containing the terms in the corpus, where each term has a corresponding
@@ -305,7 +315,7 @@ def get_tfIdf_inverted_index(inverted_index, vocabulary_df, processed_texts, fil
 
 def cosine_similarity(doc_vector, query_vector):
     """
-    Calculate the cosine similarity between two vectors.
+    Calculates the cosine similarity between two vectors.
 
     Cosine similarity is a metric used to measure how similar two vectors are, 
     regardless of their magnitude, by calculating the cosine of the angle between them.
@@ -313,12 +323,12 @@ def cosine_similarity(doc_vector, query_vector):
     A value of 0 indicates orthogonality or no similarity.
 
     Args:
-        doc_vector (numpy array): A vector representing the document.
-        query_vector (numpy array): A vector representing the query.
+    - doc_vector (numpy array): A vector representing the document.
+    - query_vector (numpy array): A vector representing the query.
 
     Returns:
-        float: The cosine similarity score between the document vector and the query vector.
-               Returns 0 if the denominator is 0 (i.e., if either of the vectors is a zero vector).
+    - float: The cosine similarity score between the document vector and the query vector.
+              Returns 0 if the denominator is 0 (i.e., if either of the vectors is a zero vector).
     """
     
     # Calculate the dot product between the document and query vectors
@@ -342,7 +352,7 @@ def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_t
     Executes a ranked query by calculating cosine similarity between a query vector (TF-IDF)
     and document vectors, using only the terms from the query that, once processed, exist in the vocabulary.
 
-    Parameters:
+    Args:
     - query_terms (str): Query input as a space-separated string of terms.
     - inverted_index (dict): Dictionary with term IDs as keys and values as lists of tuples (document ID, TF-IDF score),
                              representing the inverted index for documents.
@@ -364,32 +374,34 @@ def execute_ranked_query(query_terms, inverted_index, vocabulary_df, processed_t
 
     # If any query terms were not found, create a message with those terms
     not_found = "No matches found for these terms: " + ', '.join(list(set(no_matches))) if no_matches else ""
+    ranked_results = []
 
-    # Map query terms to their corresponding term IDs from the vocabulary
-    query_term_ids = (vocabulary_df[vocabulary_df['term'].isin(query_list)]).set_index('term').loc[query_list].reset_index()['term_id'].astype(int).tolist()
+    if len(query_list) > 0:
+        # Map query terms to their corresponding term IDs from the vocabulary
+        query_term_ids = (vocabulary_df[vocabulary_df['term'].isin(query_list)]).set_index('term').loc[query_list].reset_index()['term_id'].astype(int).tolist()
 
-    # Initialize the query vector, setting TF-IDF values for query terms
-    query_vector = np.zeros(vocabulary_df.shape[0])
-    for i in range(len(query_term_ids)):
-        query_vector[query_term_ids[i]] = get_tfIdf(query_list[i], query_list, processed_texts)
+        # Initialize the query vector, setting TF-IDF values for query terms
+        query_vector = np.zeros(vocabulary_df.shape[0])
+        for i in range(len(query_term_ids)):
+            query_vector[query_term_ids[i]] = get_tfIdf(query_list[i], query_list, processed_texts)
+            
+        # Initialize document vectors with default zero values for each term
+        document_vectors = defaultdict(lambda: np.zeros(vocabulary_df.shape[0]))
         
-    # Initialize document vectors with default zero values for each term
-    document_vectors = defaultdict(lambda: np.zeros(vocabulary_df.shape[0]))
-    
-    # Populate document vectors with TF-IDF scores from the inverted index
-    for term_id in vocabulary_df['term_id']:
-        if term_id in inverted_index:
-            for doc_id, tfidf_score in inverted_index[term_id]:
-                document_vectors[doc_id][term_id] = tfidf_score
-    
-    # Compute cosine similarity for each document vector against the query vector
-    scores = {doc_id: cosine_similarity(doc_vector, query_vector) for doc_id, doc_vector in document_vectors.items()}
-    
-    # Rank documents by similarity scores, in descending order
-    ranked_results = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    
-    if len(ranked_results) > top_k:
-    # Limit the results to the top_k documents
-        ranked_results = ranked_results[:top_k]
+        # Populate document vectors with TF-IDF scores from the inverted index
+        for term_id in vocabulary_df['term_id']:
+            if term_id in inverted_index:
+                for doc_id, tfidf_score in inverted_index[term_id]:
+                    document_vectors[doc_id][term_id] = tfidf_score
+        
+        # Compute cosine similarity for each document vector against the query vector
+        scores = {doc_id: cosine_similarity(doc_vector, query_vector) for doc_id, doc_vector in document_vectors.items()}
+        
+        # Rank documents by similarity scores, in descending order
+        ranked_results = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+        
+        if len(ranked_results) > top_k:
+        # Limit the results to the top_k documents
+            ranked_results = ranked_results[:top_k]
     
     return ranked_results, not_found
