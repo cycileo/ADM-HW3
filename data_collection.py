@@ -5,7 +5,8 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
 import glob
-
+import json
+import ast
 
 
 # ========================================================
@@ -177,7 +178,7 @@ def extract_info_from_html(html):
     # Initialize fields
     address = city = postal_code = country = ""
     
-    # Extract the address text from the first `div`
+    # Extract the address text from the first div
     address_text = blocks[0].text.strip()
     
     # Split the components
@@ -204,7 +205,7 @@ def extract_info_from_html(html):
 
     facilities_services = []
 
-    # Extract services from the ul list under `restaurant-details__services`
+    # Extract services from the ul list under restaurant-details__services
     services_section = soup.find('div', class_='restaurant-details__services')
     if services_section:
         # Find the first ul in the section
@@ -233,13 +234,30 @@ def extract_info_from_html(html):
     if website_tag and 'href' in website_tag.attrs:
         website = website_tag['href'].strip()  # Get the URL and remove extra spaces
 
+    # Extract Region and coordinates from JSON-LD
+    region = latitude = longitude = ""
+    json_ld_script = soup.find('script', type='application/ld+json')
+    if json_ld_script:
+        try:
+            json_data = json.loads(json_ld_script.string)
+            address_data = json_data.get('address', {})
+            region = address_data.get('addressRegion', "")
+            latitude = json_data.get('latitude', None)
+            longitude = json_data.get('longitude', None)
+        except json.JSONDecodeError:
+            pass
+
+
     # Return the dictionary with the extracted data
     return {
         'restaurantName': restaurant_name,
         'address': address,
         'city': city,
         'postalCode': postal_code,
+        'region': region,
         'country': country,
+        'latitude': latitude,
+        'longitude': longitude,
         'priceRange': price_range,
         'cuisineType': cuisine_type,
         'description': description,
@@ -306,7 +324,7 @@ def html_to_tsv(data_folder='DATA', max_workers=4):
         process_file(file_path, index, tsv_folder)
 
     # Create a list of tuples containing file paths and their indices
-    file_tuples = [(file_path, index) for index, file_path in enumerate(html_files, start=1)]
+    file_tuples = [(file_path, index) for index, file_path in enumerate(html_files, start=0)]
 
     # Use ThreadPoolExecutor to parallelize the processing
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -314,6 +332,7 @@ def html_to_tsv(data_folder='DATA', max_workers=4):
         list(tqdm(executor.map(process_file_wrapper, file_tuples), total=len(html_files), desc="Processing HTMLs"))
 
     print("All files have been processed and saved.")
+
 
 # Function to create the dataframe for the dataset
 def create_combined_dataframe(folder_path, separator):
@@ -330,10 +349,17 @@ def create_combined_dataframe(folder_path, separator):
     # Find all .tsv files in the specified folder
     all_files = glob.glob(os.path.join(folder_path, "*.tsv"))
 
+    # Sort by name ID
+    sorted_files = sorted(all_files, key=lambda file: int(file.split('_')[-1].split('.')[0]))
+
     # Load each .tsv file as a DataFrame and store in a list
-    df_list = [pd.read_csv(file, sep=separator) for file in all_files]
+    df_list = [pd.read_csv(file, sep=separator) for file in sorted_files]
     
     # Concatenate all DataFrames in the list into a single DataFrame
     combined_df = pd.concat(df_list, ignore_index=True)
+
+    # Convert back string to list of strings
+    combined_df['facilitiesServices'] = combined_df['facilitiesServices'].apply(ast.literal_eval)
+    combined_df['creditCards'] = combined_df['creditCards'].apply(ast.literal_eval)
 
     return combined_df
