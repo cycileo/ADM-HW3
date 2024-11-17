@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    
+        <script>
+            L_NO_TOUCH = false;
+            L_DISABLE_3D = false;
+        </script>
+    
+    <style>html, body {width: 100%;height: 100%;margin: 0;padding: 0;}</style>
+    <style>#map {position:absolute;top:0;bottom:0;right:0;left:0;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_3e668afb46980aaaf9831a7425b2a5f7 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+        
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/leaflet.markercluster.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.1.0/MarkerCluster.Default.css"/>
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_3e668afb46980aaaf9831a7425b2a5f7" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_3e668afb46980aaaf9831a7425b2a5f7 = L.map(
+                "map_3e668afb46980aaaf9831a7425b2a5f7",
+                {
+                    center: [41.9028, 12.4964],
+                    crs: L.CRS.EPSG3857,
+                    zoom: 6,
+                    zoomControl: true,
+                    preferCanvas: false,
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_b708a87d9da7a283ba51d31c6c255ead = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {"attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors", "detectRetina": false, "maxNativeZoom": 19, "maxZoom": 19, "minZoom": 0, "noWrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
+            );
+        
+    
+            tile_layer_b708a87d9da7a283ba51d31c6c255ead.addTo(map_3e668afb46980aaaf9831a7425b2a5f7);
+        
+    
+            var marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8 = L.markerClusterGroup(
+                {}
+            );
+        
+    
+            var circle_marker_6912c963878f84b0bbf42d53712c4636 = L.circleMarker(
+                [43.770681, 11.2674875],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_441beb9ffea843bafbdfa138422659ae = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_c9f3dabffee9ce8f3ce6b05fd920d01f = $(`<div id="html_c9f3dabffee9ce8f3ce6b05fd920d01f" style="width: 100.0%; height: 100.0%;"><b>L'Ortone</b><br>Price Range: €€<br>City: Florence<br>Region: Tuscany</div>`)[0];
+                popup_441beb9ffea843bafbdfa138422659ae.setContent(html_c9f3dabffee9ce8f3ce6b05fd920d01f);
+            
+        
+
+        circle_marker_6912c963878f84b0bbf42d53712c4636.bindPopup(popup_441beb9ffea843bafbdfa138422659ae)
+        ;
+
+        
+    
+    
+            var circle_marker_906f4cbe13208c77591b7199ca2e25b0 = L.circleMarker(
+                [45.1869216, 9.7831801],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_c8915390371c8a86964a892fb426c8f9 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_9db93aa9e7ecf58f898ceee89ede967c = $(`<div id="html_9db93aa9e7ecf58f898ceee89ede967c" style="width: 100.0%; height: 100.0%;"><b>Da Giacomo</b><br>Price Range: €€<br>City: Pizzighettone<br>Region: Lombardy</div>`)[0];
+                popup_c8915390371c8a86964a892fb426c8f9.setContent(html_9db93aa9e7ecf58f898ceee89ede967c);
+            
+        
+
+        circle_marker_906f4cbe13208c77591b7199ca2e25b0.bindPopup(popup_c8915390371c8a86964a892fb426c8f9)
+        ;
+
+        
+    
+    
+            var circle_marker_8894e16c84c16a3888d66937133ca787 = L.circleMarker(
+                [45.3794034, 9.9010106],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_f3914dffadaefb13da4859a8be370415 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_de333367a1d7cf3336efd18da9565325 = $(`<div id="html_de333367a1d7cf3336efd18da9565325" style="width: 100.0%; height: 100.0%;"><b>Saur</b><br>Price Range: €€<br>City: Barco<br>Region: Lombardy</div>`)[0];
+                popup_f3914dffadaefb13da4859a8be370415.setContent(html_de333367a1d7cf3336efd18da9565325);
+            
+        
+
+        circle_marker_8894e16c84c16a3888d66937133ca787.bindPopup(popup_f3914dffadaefb13da4859a8be370415)
+        ;
+
+        
+    
+    
+            var circle_marker_6d38b8a01b0aae0e354a52ebcc91fe44 = L.circleMarker(
+                [44.7112661, 11.3059943],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_56c95d6bbba28ac4722eb07a1b1edc3c = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_f810af25a5f6485c573002ffbe7c698b = $(`<div id="html_f810af25a5f6485c573002ffbe7c698b" style="width: 100.0%; height: 100.0%;"><b>Buriani dal 1967</b><br>Price Range: €€<br>City: Pieve di Cento<br>Region: Emilia-Romagna</div>`)[0];
+                popup_56c95d6bbba28ac4722eb07a1b1edc3c.setContent(html_f810af25a5f6485c573002ffbe7c698b);
+            
+        
+
+        circle_marker_6d38b8a01b0aae0e354a52ebcc91fe44.bindPopup(popup_56c95d6bbba28ac4722eb07a1b1edc3c)
+        ;
+
+        
+    
+    
+            var circle_marker_99b45aa21e8e25b79f83f8a9a4e1f6dc = L.circleMarker(
+                [45.8835969, 8.5410813],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_5fe2d9b8d99648040f58a10e24a2a6e1 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_f4e9f4b84c68011475507bc416d0d30c = $(`<div id="html_f4e9f4b84c68011475507bc416d0d30c" style="width: 100.0%; height: 100.0%;"><b>La Botte</b><br>Price Range: €€<br>City: Stresa<br>Region: Piedmont</div>`)[0];
+                popup_5fe2d9b8d99648040f58a10e24a2a6e1.setContent(html_f4e9f4b84c68011475507bc416d0d30c);
+            
+        
+
+        circle_marker_99b45aa21e8e25b79f83f8a9a4e1f6dc.bindPopup(popup_5fe2d9b8d99648040f58a10e24a2a6e1)
+        ;
+
+        
+    
+    
+            var circle_marker_e1d4f16442324999d4e9ae6bfbc89e1e = L.circleMarker(
+                [44.3174523, 9.3232846],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_6a54167373a48d3f54b0209e25d18c2f = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_d6e8e2e983f95a73cad5738d34f297e3 = $(`<div id="html_d6e8e2e983f95a73cad5738d34f297e3" style="width: 100.0%; height: 100.0%;"><b>Duo</b><br>Price Range: €€<br>City: Chiavari<br>Region: Liguria</div>`)[0];
+                popup_6a54167373a48d3f54b0209e25d18c2f.setContent(html_d6e8e2e983f95a73cad5738d34f297e3);
+            
+        
+
+        circle_marker_e1d4f16442324999d4e9ae6bfbc89e1e.bindPopup(popup_6a54167373a48d3f54b0209e25d18c2f)
+        ;
+
+        
+    
+    
+            var circle_marker_617149cfe210795f2f9fb6763f58e5ec = L.circleMarker(
+                [45.0639963, 7.6850158],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_eb2736e2d0dc4afe11eec30b910cdfc9 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_da3fdf9332abb6b8a6401d074a30e7a0 = $(`<div id="html_da3fdf9332abb6b8a6401d074a30e7a0" style="width: 100.0%; height: 100.0%;"><b>Razzo</b><br>Price Range: €€<br>City: Turin<br>Region: Piedmont</div>`)[0];
+                popup_eb2736e2d0dc4afe11eec30b910cdfc9.setContent(html_da3fdf9332abb6b8a6401d074a30e7a0);
+            
+        
+
+        circle_marker_617149cfe210795f2f9fb6763f58e5ec.bindPopup(popup_eb2736e2d0dc4afe11eec30b910cdfc9)
+        ;
+
+        
+    
+    
+            var circle_marker_92b758ab55a17b9f4e9eb85ba3a3fc5f = L.circleMarker(
+                [43.8511366, 13.01097],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_bd3ca0539322ddd1f9385f931826b469 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_c111a489c31ab7f7e6db02111ce3af8f = $(`<div id="html_c111a489c31ab7f7e6db02111ce3af8f" style="width: 100.0%; height: 100.0%;"><b>Il Galeone</b><br>Price Range: €€<br>City: Fano<br>Region: Marche</div>`)[0];
+                popup_bd3ca0539322ddd1f9385f931826b469.setContent(html_c111a489c31ab7f7e6db02111ce3af8f);
+            
+        
+
+        circle_marker_92b758ab55a17b9f4e9eb85ba3a3fc5f.bindPopup(popup_bd3ca0539322ddd1f9385f931826b469)
+        ;
+
+        
+    
+    
+            var circle_marker_718fd30fb4408581cc2b7dc941ddbd38 = L.circleMarker(
+                [42.5621827, 12.6445805],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_91ffb07465a1812936f3e991400b59e6 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_07bf58e1ec86ec16ee21d6214c2ee2f0 = $(`<div id="html_07bf58e1ec86ec16ee21d6214c2ee2f0" style="width: 100.0%; height: 100.0%;"><b>Nascostoposto</b><br>Price Range: €€<br>City: Terni<br>Region: Umbria</div>`)[0];
+                popup_91ffb07465a1812936f3e991400b59e6.setContent(html_07bf58e1ec86ec16ee21d6214c2ee2f0);
+            
+        
+
+        circle_marker_718fd30fb4408581cc2b7dc941ddbd38.bindPopup(popup_91ffb07465a1812936f3e991400b59e6)
+        ;
+
+        
+    
+    
+            var circle_marker_71fdba3c7401505cc7800dab2eb7b3a2 = L.circleMarker(
+                [45.5342494, 9.2306544],
+                {"bubblingMouseEvents": true, "color": "blue", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "blue", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 8, "stroke": true, "weight": 3}
+            ).addTo(marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8);
+        
+    
+        var popup_4c99ddb3bd60b97c5044437c1781ff05 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_3e85c44a88afb8a29a001d4524e5ec5b = $(`<div id="html_3e85c44a88afb8a29a001d4524e5ec5b" style="width: 100.0%; height: 100.0%;"><b>85 Bistrot</b><br>Price Range: €€<br>City: Sesto San Giovanni<br>Region: Lombardy</div>`)[0];
+                popup_4c99ddb3bd60b97c5044437c1781ff05.setContent(html_3e85c44a88afb8a29a001d4524e5ec5b);
+            
+        
+
+        circle_marker_71fdba3c7401505cc7800dab2eb7b3a2.bindPopup(popup_4c99ddb3bd60b97c5044437c1781ff05)
+        ;
+
+        
+    
+    
+            marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8.addTo(map_3e668afb46980aaaf9831a7425b2a5f7);
+        
+    
+            var layer_control_3581ab3fc576ea89f2b439322cad766d_layers = {
+                base_layers : {
+                    "openstreetmap" : tile_layer_b708a87d9da7a283ba51d31c6c255ead,
+                },
+                overlays :  {
+                    "macro_element_facb9acdd0c7ff5e8dd572442e5672a8" : marker_cluster_facb9acdd0c7ff5e8dd572442e5672a8,
+                },
+            };
+            let layer_control_3581ab3fc576ea89f2b439322cad766d = L.control.layers(
+                layer_control_3581ab3fc576ea89f2b439322cad766d_layers.base_layers,
+                layer_control_3581ab3fc576ea89f2b439322cad766d_layers.overlays,
+                {"autoZIndex": true, "collapsed": true, "position": "topright"}
+            ).addTo(map_3e668afb46980aaaf9831a7425b2a5f7);
+
+        
+</script>
+</html>
