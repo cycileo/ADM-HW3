@@ -1,6 +1,5 @@
 # Ignore HTMLs and TSVs folders
 HTMLs/
-TSVs/
 
 # Ignore the .txt file
 *.txt

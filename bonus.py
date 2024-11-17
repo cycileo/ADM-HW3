@@ -19,48 +19,11 @@ from IPython.display import display, clear_output, Image
 from ipywidgets import Layout, Checkbox, GridBox, Label, IntRangeSlider
 from tabulate import tabulate
 
-
-# Function to preprocess restaurant descriptions by removing stopwords, cleaning punctuation, and applying stemming to improve search efficiency.
-def preprocess_text(descriptions):
-    """
-    Preprocesses a list of restaurant descriptions by:
-    - Tokenizing each description
-    - Removing stopwords
-    - Cleaning tokens of punctuation
-    - Stemming each word to its root form
-    
-    Args:
-    descriptions (list of str): List of text descriptions to preprocess
-    
-    Returns:
-    list of list of str: A list where each element is a list of processed tokens for a description
-    """
-    
-    processed_descriptions = []  # Holds the final processed tokens for each description
-    stop_words = set(stopwords.words('english'))  # Load English stopwords set
-    stemmer = SnowballStemmer('english')  # Initialize the Snowball stemmer for English
-
-    # Process each description individually
-    for description in descriptions:
-        # Tokenize the description into words/punctuation using wordpunct_tokenize
-        tokens = wordpunct_tokenize(description)
-        
-        # Remove stopwords and lowercase each word for uniformity
-        tokens_without_stopwords = [word for word in tokens if word.lower() not in stop_words]
-        
-        # Remove punctuation by substituting any non-word characters with an empty string
-        cleaned_tokens = [re.sub(r'[^\w\s]', '', token) for token in tokens_without_stopwords if re.sub(r'[^\w\s]', '', token)]
-        
-        # Stem each word to its root form
-        stemmed_tokens = [stemmer.stem(word) for word in cleaned_tokens]
-        
-        # Append the processed tokens for this description to the list
-        processed_descriptions.append(stemmed_tokens)
-
-    return processed_descriptions
+from search_engine import cosine_similarity, preprocess_text, get_tfIdf
 
 
-# Function to create 'vocabulary.csv' file
+
+# Function to create vocabulary file
 def create_vocabulary(processed_descriptions, file_name=''):
     """
     Checks if 'vocabulary.csv' exists. If it does, loads it as a DataFrame; if not, creates a vocabulary file in CSV format, mapping each unique word (term) in the processed texts to a unique integer ID.
@@ -99,29 +62,10 @@ def create_vocabulary(processed_descriptions, file_name=''):
     
     return vocabulary_df
 
-# Function to create the inverted index dictionary and save it as 'inverted_index.json'
+
+# Function to create the inverted index
 def create_inverted_index(processed_descriptions, vocabulary_df, file_name=""):
-    """
-    Creates or loads an inverted index for a collection of documents (processed descriptions).
-    
-    The inverted index maps term IDs to lists of document indices containing the term. 
-    Document IDs are derived from the row index of the `processed_descriptions` list,
-    meaning the document ID corresponds to the index of the description in the list.
-    
-    Args:
-    processed_descriptions (list of list of str): A list of processed document descriptions, 
-                                                  where each description is a list of terms (strings).
-    vocabulary_df (pandas.DataFrame): A DataFrame containing 'term' and 'term_id' columns. 
-                                      It maps each term to a unique term_id.
-    file_path (str): Path to the file where the inverted index is stored. Default is "inverted_index.json".
-    
-    Returns:
-    dict: An inverted index, where keys are term IDs and values are lists of document indices
-          (rows) that contain each term. Document IDs correspond to the indices of the 
-          descriptions in the `processed_descriptions` list.
-    """
-    
-    # 
+
     if file_name:
         file_path = 'DATA/inverted_index_' + file_name + '.json'
     else: 
@@ -166,88 +110,8 @@ def create_inverted_index(processed_descriptions, vocabulary_df, file_name=""):
     return inverted_index
 
 
-
-
-def get_tfIdf(term, document, corpus):
-    """
-    Calculate the TF-IDF (Term Frequency-Inverse Document Frequency) score for a given term in a document.
-    
-    TF-IDF is a statistic used to evaluate the importance of a term within a document relative to a corpus of documents.
-    The formula is:
-        TF-IDF = TF * IDF
-
-    Where:
-        - TF (Term Frequency) measures how frequently a term appears in a document.
-        - IDF (Inverse Document Frequency) measures the rarity of the term across the entire corpus.
-
-    Parameters:
-    - term (str): The term for which the TF-IDF score is being calculated.
-    - document (list of str): The list of words (terms) in the document being analyzed.
-    - corpus (list of list of str): The entire collection of documents, each represented as a list of words.
-
-    Returns:
-    - float: The calculated TF-IDF score for the term in the given document.
-
-    Detailed explanation of the computation:
-    
-    1. **Term Frequency (TF):**
-       TF is calculated as the ratio of the count of the `term` in the `document` to the total number of words in that document.
-       This gives a measure of how important the term is within the context of the document.
-       
-       Formula:
-       TF = count of the term in the document / total number of words in the document
-
-    2. **Inverse Document Frequency (IDF):**
-       IDF is calculated to measure the importance of the `term` across the entire `corpus`. A term that appears in many documents is considered less informative, 
-       while a term that appears in fewer documents is considered more informative.
-       IDF is calculated by taking the logarithm of the total number of documents divided by the number of documents containing the term. 
-       The `+1` in both the numerator and denominator ensures that terms that appear in every document do not result in a division by zero.
-
-       Formula:
-       IDF = log10(total number of documents / number of documents containing the term)
-
-    3. **TF-IDF Calculation:**
-       The TF and IDF values are multiplied together to give the TF-IDF score.
-
-    """
-    
-    # Compute Term Frequency (TF)
-    tf = document.count(term) / len(document)  # How often the term appears in the document, normalized by document length
-    
-    # Compute the total number of documents in the corpus (adding 1 for the "+1" term in the IDF formula)
-    count_of_documents = len(corpus) + 1
-    
-    # Compute how many documents contain the term (adding 1 for the "+1" term in the IDF formula)
-    count_of_documents_with_term = sum([1 for doc in corpus if term in doc]) + 1
-    
-    # Compute Inverse Document Frequency (IDF)
-    idf = np.log10(count_of_documents / count_of_documents_with_term)  # Logarithmic scaling of document frequency
-    
-    # Return the TF-IDF score
-    return tf * idf  # The TF-IDF score is the product of TF and IDF
-
-
+# Function to create the tfidf inverted index
 def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_description, file_name=""):
-    """
-    Create or load a TF-IDF inverted index for a given corpus of documents, based on the term frequency (TF)
-    and inverse document frequency (IDF) scores. The inverted index will map terms to the documents in which
-    they appear along with their corresponding TF-IDF scores.
-
-    If the inverted index already exists (stored in a JSON file), it will be loaded. If not, it will be generated
-    from the vocabulary, the processed descriptions of the documents, and the pre-existing inverted index.
-    
-    Parameters:
-    - inverted_index (dict): A dictionary where the keys are term IDs and the values are lists of document IDs
-                              in which the term appears.
-    - vocabulary (DataFrame): A DataFrame containing the terms in the corpus, where each term has a corresponding
-                              unique term ID.
-    - processed_description (list of list of str): A list of processed documents, each represented as a list of terms.
-    - file_path (str): The file path to save or load the inverted index with TF-IDF scores. Defaults to "tfIdf_inverted_index.json".
-    
-    Returns:
-    - tfIdf_inverted_index (dict): A dictionary where the keys are term IDs, and the values are lists of tuples
-                                    (document ID, TF-IDF score) representing the importance of each term in each document.
-    """
 
     if file_name:
         file_path = 'DATA/tfIdf_inverted_index_' + file_name + '.json'
@@ -297,7 +161,6 @@ def create_tfIdf_inverted_index(inverted_index, vocabulary, processed_descriptio
     return tfIdf_inverted_index
 
 
-
 def prepare_search_data(df): 
     df['processedName'] = preprocess_text(df['restaurantName'].astype(str))
     df['processedCity'] = preprocess_text(df['city'])
@@ -315,42 +178,6 @@ def prepare_search_data(df):
     voc_list = [name_voc, city_voc, cuis_voc]
     processed_list = [df['processedName'], df['processedCity'], df['processedCuisine']]
     return (tfidf_list, voc_list, processed_list)
-
-
-
-def cosine_similarity(doc_vector, query_vector):
-    """
-    Calculate the cosine similarity between two vectors.
-
-    Cosine similarity is a metric used to measure how similar two vectors are, 
-    regardless of their magnitude, by calculating the cosine of the angle between them.
-    The cosine similarity value ranges from -1 (completely opposite) to 1 (completely similar).
-    A value of 0 indicates orthogonality or no similarity.
-
-    Args:
-        doc_vector (numpy array): A vector representing the document.
-        query_vector (numpy array): A vector representing the query.
-
-    Returns:
-        float: The cosine similarity score between the document vector and the query vector.
-               Returns 0 if the denominator is 0 (i.e., if either of the vectors is a zero vector).
-    """
-    
-    # Calculate the dot product between the document and query vectors
-    dot_product = np.dot(doc_vector, query_vector)
-    
-    # Calculate the L2 norm of the document vector
-    doc_vector_norm = np.sqrt(np.dot(doc_vector, doc_vector))
-    
-    # Calculate the L2 norm of the query vector
-    query_vector_norm = np.sqrt(np.dot(query_vector, query_vector))
-    
-    # Calculate the denominator (the product of the norms of the two vectors)
-    denominator = doc_vector_norm * query_vector_norm
-    
-    # Return the cosine similarity score if the denominator is not zero, otherwise return 0
-    return dot_product / denominator if denominator != 0 else 0
-
 
 
 def compute_query_similarity(query_terms, inverted_index, vocabulary_df, processed_texts):
@@ -590,7 +417,6 @@ def display_results_and_filters(df_res, top_k):
         results_output
     )
     update_results()
-
 
 
 def search(tfidf_list, voc_list, processed_list, df): 

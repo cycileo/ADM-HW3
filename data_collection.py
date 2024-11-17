@@ -148,6 +148,9 @@ def download_html_parallel(restaurant_links, data_folder):
 
 # Main function to encapsulate everything
 def download_html_from_link_file(file_name = 'restaurant_links.txt', data_folder = 'DATA'):
+    if os.path.exists(os.path.join(data_folder,'TSVs')):
+        print('The tsv files already exists, skipping the download of the htmls. ')
+        return
     # Read the restaurant links from the file
     file_path = os.path.join(data_folder, file_name)
     restaurant_links = read_links_from_file(file_path)
