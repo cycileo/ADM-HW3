@@ -39,5 +39,5 @@ This repository contains the following files:
 
 ## How to Use
 
-You can view the notebook by opening `main.ipynb` in any Jupyter notebook environment or through GitHub's integrated [notebook viewer] (https://nbviewer.org/github/cycileo/ADM-HW3/blob/Merge-Try/main.ipynb).   
+You can view the notebook by opening `main.ipynb` in any Jupyter notebook environment or through GitHub's integrated [notebook viewer](https://nbviewer.org/github/cycileo/ADM-HW3/blob/Merge-Try/main.ipynb).   
 To run the code, ensure to copy all the content of the repository. 
