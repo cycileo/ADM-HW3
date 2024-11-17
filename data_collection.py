@@ -302,7 +302,24 @@ def get_html_files_in_directory(directory):
     
     return page_files
 
+def get_html_files_in_directory1(directory):
+    page_files = []
 
+    try:
+        # Use os.walk() to explore all subfolders and collect the HTML files
+        for root, dirs, files in os.walk(directory):
+            # Skip symbolic links
+            if os.path.islink(root):
+                continue
+            for filename in files:
+                # Case-insensitive match for .html files
+                if filename.lower().endswith(".html"):
+                    file_path = os.path.join(root, filename)
+                    page_files.append(file_path)
+    except PermissionError as e:
+        print(f"Permission denied: {e}")
+
+    return page_files
 # Function to iterate over all htmls
 def html_to_tsv(data_folder='DATA', max_workers=4):
     # Check if the folder with the HTML files exists, if not exit
@@ -347,14 +364,25 @@ def create_combined_dataframe(folder_path, separator):
     - DataFrame containing all combined data.
     """
     # Find all .tsv files in the specified folder
-    all_files = glob.glob(os.path.join(folder_path, "*.tsv"))
+    all_files = [
+        os.path.join(folder_path, filename)
+        for filename in os.listdir(folder_path)
+        if filename.endswith(".tsv")
+    ]
+
+    # Sort by name ID
+    sorted_files = sorted(all_files, key=lambda file: int(file.split('_')[-1].split('.')[0]))
 
     # Sort by name ID
     sorted_files = sorted(all_files, key=lambda file: int(file.split('_')[-1].split('.')[0]))
 
     # Load each .tsv file as a DataFrame and store in a list
     df_list = [pd.read_csv(file, sep=separator) for file in sorted_files]
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> origin/Merge-Try
     # Concatenate all DataFrames in the list into a single DataFrame
     combined_df = pd.concat(df_list, ignore_index=True)
 
