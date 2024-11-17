@@ -43,10 +43,10 @@ def compute_custom_new_score(
 
     #weights
     weights = {
-        'description': 0.3,
+        'description': 0.35,
         'cuisine': 0.25,
         'facilities': 0.25,
-        'price': 0.2
+        'price': 0.15
     }
 
     #total score
